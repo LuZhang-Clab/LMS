@@ -106,12 +106,19 @@ async function main() {
   }
 
   // Links
+  const rawLinks = data.links;
+  const linksObj: Record<string, string> = {};
+  if (rawLinks && typeof rawLinks === "object" && !Array.isArray(rawLinks)) {
+    for (const [k, v] of Object.entries(rawLinks as Record<string, unknown>)) {
+      if (typeof v === "string") linksObj[k] = v;
+    }
+  }
   const linksData = [
-    { platform: "linkedin", url: data.links.linkedin || "", sortOrder: 0 },
-    { platform: "github", url: data.links.github || "", sortOrder: 1 },
-    { platform: "replit", url: data.links.replit || "", sortOrder: 2 },
-    { platform: "xiaohongshu", url: data.links.xiaohongshu || "", sortOrder: 3 },
-    { platform: "email", url: `mailto:${data.links.email || ""}`, sortOrder: 4 },
+    { platform: "linkedin", url: linksObj.linkedin || "", sortOrder: 0 },
+    { platform: "github", url: linksObj.github || "", sortOrder: 1 },
+    { platform: "replit", url: linksObj.replit || "", sortOrder: 2 },
+    { platform: "xiaohongshu", url: linksObj.xiaohongshu || "", sortOrder: 3 },
+    { platform: "email", url: `mailto:${linksObj.email || ""}`, sortOrder: 4 },
   ];
   for (const link of linksData) {
     if (!link.url || link.url === "mailto:") continue;

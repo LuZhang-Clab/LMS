@@ -53,22 +53,6 @@ export async function POST(request: Request) {
 
     const url = `/images/${folder}/${filename}`;
 
-    if (projectId) {
-      const project = await prisma.project.findUnique({ where: { id: projectId } });
-      if (project) {
-        let images: string[] = [];
-        try { images = JSON.parse(project.images); } catch {}
-        images.push(url);
-        await prisma.project.update({
-          where: { id: projectId },
-          data: {
-            images: JSON.stringify(images),
-            cover: project.cover || url,
-          },
-        });
-      }
-    }
-
     return NextResponse.json({ url });
   } catch (error) {
     console.error("Upload error:", error);
