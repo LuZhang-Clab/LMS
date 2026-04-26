@@ -6,7 +6,7 @@ import Nav from "@/components/Nav";
 import type { WorkExperience, Service } from "@/types";
 import type { SiteLink } from "@/types";
 import type { ContentBlock } from "@/types";
-import { useLocale } from "@/context/LocaleContext";
+import { useLocale } from "@/context/LocaleProvider";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

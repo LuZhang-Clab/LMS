@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
-import { useLocale } from "@/context/LocaleContext";
+import { useLocale } from "@/context/LocaleProvider";
 
 export default function Nav() {
   const pathname = usePathname();

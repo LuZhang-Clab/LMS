@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import Link from "next/link";
 import Nav from "@/components/Nav";
 import type { ContentBlock } from "@/types";
-import { useLocale } from "@/context/LocaleContext";
+import { useLocale } from "@/context/LocaleProvider";
 
 function resolveImage(src: string, folder: string): string {
   if (src.startsWith("http")) return src;

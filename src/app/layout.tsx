@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { DM_Serif_Display, Noto_Serif_SC, Noto_Sans_SC } from "next/font/google";
-import { LocaleProvider } from "@/context/LocaleContext";
+import { LocaleProvider } from "@/context/LocaleProvider";
 
 const dmSerif = DM_Serif_Display({
   weight: ["400"],

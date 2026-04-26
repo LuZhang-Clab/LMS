@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import Nav from "@/components/Nav";
 import type { Category, ContentBlock } from "@/types";
-import { useLocale } from "@/context/LocaleContext";
+import { useLocale } from "@/context/LocaleProvider";
 
 // ─── Splash Screen ───────────────────────────────────────────────────────────
 
