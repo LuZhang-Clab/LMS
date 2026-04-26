@@ -2,60 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { X, Plus, Save, ExternalLink, LogOut, Upload } from "lucide-react";
-
-interface ContentBlock {
-  type: "text" | "heading" | "images" | "link";
-  text?: string;
-  files?: string[];
-  url?: string;
-}
-
-interface Project {
-  id: string;
-  title_en: string;
-  title_zh: string;
-  cover: string;
-  image_folder: string;
-  link?: string;
-  images?: string[];
-  content_zh: ContentBlock[];
-  content_en: ContentBlock[];
-}
-
-interface Category {
-  id: string;
-  name_en: string;
-  name_zh: string;
-  projects: Project[];
-}
-
-interface WorkExperience {
-  id: string;
-  title_en: string;
-  title_zh: string;
-  period: string;
-  detail_folder: string;
-  content_zh: ContentBlock[];
-  content_en: ContentBlock[];
-}
-
-interface Service {
-  id: string;
-  title_en: string;
-  title_zh: string;
-  desc_en: string;
-  desc_zh: string;
-  sort_order: number;
-}
-
-interface SiteData {
-  site: { title_en: string; title_zh: string; subtitle_en: string; subtitle_zh: string };
-  about: { name_en: string; name_zh: string; title_en: string; title_zh: string; bio_en: string; bio_zh: string; quote_en: string; quote_zh: string; education_en: string; education_zh: string; photo: string };
-  links: { id?: string; platform: string; url: string; sort_order?: number }[];
-  workExperience: WorkExperience[];
-  services: Service[];
-  categories: Category[];
-}
+import type { AdminSiteData, AdminService, AdminProject, AdminWorkExperience, ContentBlock } from "@/types";
 
 type Tab = "projects" | "about" | "work" | "services" | "site";
 
@@ -64,7 +11,7 @@ export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState("");
-  const [data, setData] = useState<SiteData | null>(null);
+  const [data, setData] = useState<AdminSiteData | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("projects");
   const [toast, setToast] = useState<{ message: string; type: "success" | "info" | "error" } | null>(null);
   const [lastSaved, setLastSaved] = useState<string>("");
@@ -224,10 +171,10 @@ export default function AdminPage() {
           ))}
         </div>
 
-        {activeTab === "projects" && <ProjectsTab data={data} setData={setData} showToast={showToast} uploadImage={uploadImage} />}
+        {activeTab === "projects" && <AdminProjectsTab data={data} setData={setData} showToast={showToast} uploadImage={uploadImage} />}
         {activeTab === "about" && <AboutTab data={data} setData={setData} showToast={showToast} uploadImage={uploadImage} />}
         {activeTab === "work" && <WorkTab data={data} setData={setData} />}
-        {activeTab === "services" && <ServicesTab data={data} setData={setData} />}
+        {activeTab === "services" && <AdminServicesTab data={data} setData={setData} />}
         {activeTab === "site" && <SiteTab data={data} setData={setData} />}
 
         <div className="mt-8 pt-6 border-t border-neutral-800 flex justify-end">
@@ -261,47 +208,47 @@ export default function AdminPage() {
   );
 }
 
-// Projects Tab
-function ProjectsTab({ data, setData, showToast, uploadImage }: {
-  data: SiteData;
-  setData: React.Dispatch<React.SetStateAction<SiteData | null>>;
+// AdminProjects Tab
+function AdminProjectsTab({ data, setData, showToast, uploadImage }: {
+  data: AdminSiteData;
+  setData: React.Dispatch<React.SetStateAction<AdminSiteData | null>>;
   showToast: (msg: string, type: "success" | "info" | "error") => void;
   uploadImage: (file: File, folder?: string, projectId?: string) => Promise<string | null>;
 }) {
-  const addCategory = () => {
+  const addAdminCategory = () => {
     if (!data) return;
-    setData({ ...data, categories: [...data.categories, { id: `cat-${Date.now()}`, name_en: "New Category", name_zh: "新分类", projects: [] }] });
+    setData({ ...data, categories: [...data.categories, { id: `cat-${Date.now()}`, key: `cat-${Date.now()}`, name_en: "New AdminCategory", name_zh: "新分类", projects: [] }] });
   };
 
-  const removeCategory = (ci: number) => {
+  const removeAdminCategory = (ci: number) => {
     if (!data || !confirm("确定删除此分类？")) return;
     setData({ ...data, categories: data.categories.filter((_, i) => i !== ci) });
   };
 
-  const addProject = (ci: number) => {
+  const addAdminProject = (ci: number) => {
     if (!data) return;
     const id = `proj-${Date.now()}`;
-    const newProject: Project = { id, title_en: "", title_zh: "", cover: "", image_folder: id, link: "", images: [], content_zh: [], content_en: [] };
+    const newAdminProject: AdminProject = { id, title_en: "", title_zh: "", cover: "", image_folder: id, link: "", images: [], content_zh: [], content_en: [] };
     const cats = [...data.categories];
-    cats[ci] = { ...cats[ci], projects: [...cats[ci].projects, newProject] };
+    cats[ci] = { ...cats[ci], projects: [...cats[ci].projects, newAdminProject] };
     setData({ ...data, categories: cats });
   };
 
-  const removeProject = (ci: number, pi: number) => {
+  const removeAdminProject = (ci: number, pi: number) => {
     if (!data || !confirm("删除此项目？")) return;
     const cats = [...data.categories];
     cats[ci] = { ...cats[ci], projects: cats[ci].projects.filter((_, i) => i !== pi) };
     setData({ ...data, categories: cats });
   };
 
-  const updateCategory = (ci: number, field: "name_en" | "name_zh", value: string) => {
+  const updateAdminCategory = (ci: number, field: "name_en" | "name_zh", value: string) => {
     if (!data) return;
     const cats = [...data.categories];
     cats[ci] = { ...cats[ci], [field]: value };
     setData({ ...data, categories: cats });
   };
 
-  const updateProject = (ci: number, pi: number, field: keyof Project, value: string) => {
+  const updateAdminProject = (ci: number, pi: number, field: keyof AdminProject, value: string) => {
     if (!data) return;
     const cats = [...data.categories];
     cats[ci] = { ...cats[ci], projects: cats[ci].projects.map((p, i) => i === pi ? { ...p, [field]: value } : p) };
@@ -312,7 +259,7 @@ function ProjectsTab({ data, setData, showToast, uploadImage }: {
     if (!files?.length || !data) return;
     const cats = [...data.categories];
     const proj = cats[ci].projects[pi];
-    if (!proj.images) (cats[ci].projects[pi] as Project & { images: string[] }).images = [];
+    if (!proj.images) (cats[ci].projects[pi] as AdminProject & { images: string[] }).images = [];
     const folder = proj.image_folder || proj.id;
     for (const file of Array.from(files)) {
       const url = await uploadImage(file, `projects/${folder}`, proj.id);
@@ -346,7 +293,7 @@ function ProjectsTab({ data, setData, showToast, uploadImage }: {
   return (
     <div>
       <div className="flex gap-3 mb-6">
-        <button onClick={addCategory} className="flex items-center gap-2 px-4 py-2 bg-amber-500/90 hover:bg-amber-500 text-black text-sm font-medium rounded transition-colors">
+        <button onClick={addAdminCategory} className="flex items-center gap-2 px-4 py-2 bg-amber-500/90 hover:bg-amber-500 text-black text-sm font-medium rounded transition-colors">
           <Plus size={16} /> 新建分类
         </button>
       </div>
@@ -356,19 +303,19 @@ function ProjectsTab({ data, setData, showToast, uploadImage }: {
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-amber-500/80 text-sm font-normal">{cat.name_zh} / {cat.name_en}</h3>
             <div className="flex gap-2">
-              <button onClick={() => addProject(ci)} className="px-3 py-1.5 border border-neutral-700 hover:border-amber-500/50 hover:text-amber-500/80 text-xs rounded transition-colors">+ 添加项目</button>
-              <button onClick={() => removeCategory(ci)} className="px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400/70 hover:text-red-400 text-xs rounded transition-colors">删除分类</button>
+              <button onClick={() => addAdminProject(ci)} className="px-3 py-1.5 border border-neutral-700 hover:border-amber-500/50 hover:text-amber-500/80 text-xs rounded transition-colors">+ 添加项目</button>
+              <button onClick={() => removeAdminCategory(ci)} className="px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400/70 hover:text-red-400 text-xs rounded transition-colors">删除分类</button>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4 mb-4">
             <div>
               <label className="block text-xs text-neutral-500 uppercase tracking-wider mb-1.5">分类名 (中文)</label>
-              <input type="text" value={cat.name_zh} onChange={(e) => updateCategory(ci, "name_zh", e.target.value)} className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded text-sm focus:outline-none focus:border-amber-500/50" />
+              <input type="text" value={cat.name_zh} onChange={(e) => updateAdminCategory(ci, "name_zh", e.target.value)} className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded text-sm focus:outline-none focus:border-amber-500/50" />
             </div>
             <div>
               <label className="block text-xs text-neutral-500 uppercase tracking-wider mb-1.5">分类名 (英文)</label>
-              <input type="text" value={cat.name_en} onChange={(e) => updateCategory(ci, "name_en", e.target.value)} className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded text-sm focus:outline-none focus:border-amber-500/50" />
+              <input type="text" value={cat.name_en} onChange={(e) => updateAdminCategory(ci, "name_en", e.target.value)} className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded text-sm focus:outline-none focus:border-amber-500/50" />
             </div>
           </div>
 
@@ -381,23 +328,23 @@ function ProjectsTab({ data, setData, showToast, uploadImage }: {
                   )}
                   <strong className="text-sm text-neutral-300">{proj.title_zh || proj.title_en || "新项目"}</strong>
                 </div>
-                <button onClick={() => removeProject(ci, pi)} className="px-2 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-400/70 hover:text-red-400 text-xs rounded transition-colors">删除项目</button>
+                <button onClick={() => removeAdminProject(ci, pi)} className="px-2 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-400/70 hover:text-red-400 text-xs rounded transition-colors">删除项目</button>
               </div>
 
               <div className="grid grid-cols-2 gap-3 mb-3">
                 <div>
                   <label className="block text-xs text-neutral-500 uppercase tracking-wider mb-1">标题 (中文)</label>
-                  <input type="text" value={proj.title_zh} onChange={(e) => updateProject(ci, pi, "title_zh", e.target.value)} className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded text-sm focus:outline-none focus:border-amber-500/50" />
+                  <input type="text" value={proj.title_zh} onChange={(e) => updateAdminProject(ci, pi, "title_zh", e.target.value)} className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded text-sm focus:outline-none focus:border-amber-500/50" />
                 </div>
                 <div>
                   <label className="block text-xs text-neutral-500 uppercase tracking-wider mb-1">标题 (英文)</label>
-                  <input type="text" value={proj.title_en} onChange={(e) => updateProject(ci, pi, "title_en", e.target.value)} className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded text-sm focus:outline-none focus:border-amber-500/50" />
+                  <input type="text" value={proj.title_en} onChange={(e) => updateAdminProject(ci, pi, "title_en", e.target.value)} className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded text-sm focus:outline-none focus:border-amber-500/50" />
                 </div>
               </div>
 
               <div className="mb-3">
                 <label className="block text-xs text-neutral-500 uppercase tracking-wider mb-1">外部链接 (可选)</label>
-                <input type="text" value={proj.link || ""} onChange={(e) => updateProject(ci, pi, "link", e.target.value)} className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded text-sm focus:outline-none focus:border-amber-500/50" />
+                <input type="text" value={proj.link || ""} onChange={(e) => updateAdminProject(ci, pi, "link", e.target.value)} className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded text-sm focus:outline-none focus:border-amber-500/50" />
               </div>
 
               <div className="mb-3">
@@ -427,8 +374,8 @@ function ProjectsTab({ data, setData, showToast, uploadImage }: {
 
 // About Tab
 function AboutTab({ data, setData, showToast, uploadImage }: {
-  data: SiteData;
-  setData: React.Dispatch<React.SetStateAction<SiteData | null>>;
+  data: AdminSiteData;
+  setData: React.Dispatch<React.SetStateAction<AdminSiteData | null>>;
   showToast: (msg: string, type: "success" | "info" | "error") => void;
   uploadImage: (file: File, folder?: string) => Promise<string | null>;
 }) {
@@ -528,8 +475,8 @@ function AboutTab({ data, setData, showToast, uploadImage }: {
 }
 
 // Work Tab
-function WorkTab({ data, setData }: { data: SiteData; setData: React.Dispatch<React.SetStateAction<SiteData | null>> }) {
-  const update = (i: number, field: keyof WorkExperience, value: string) => {
+function WorkTab({ data, setData }: { data: AdminSiteData; setData: React.Dispatch<React.SetStateAction<AdminSiteData | null>> }) {
+  const update = (i: number, field: keyof AdminWorkExperience, value: string) => {
     const work = [...data.workExperience];
     work[i] = { ...work[i], [field]: value };
     setData({ ...data, workExperience: work });
@@ -581,19 +528,19 @@ function WorkTab({ data, setData }: { data: SiteData; setData: React.Dispatch<Re
   );
 }
 
-// Services Tab
-function ServicesTab({ data, setData }: { data: SiteData; setData: React.Dispatch<React.SetStateAction<SiteData | null>> }) {
-  const update = (i: number, field: keyof Service, value: string) => {
+// AdminServices Tab
+function AdminServicesTab({ data, setData }: { data: AdminSiteData; setData: React.Dispatch<React.SetStateAction<AdminSiteData | null>> }) {
+  const update = (i: number, field: keyof AdminService, value: string) => {
     const services = [...data.services];
     services[i] = { ...services[i], [field]: value };
     setData({ ...data, services });
   };
 
-  const addService = () => {
+  const addAdminService = () => {
     setData({ ...data, services: [...data.services, { title_en: "", title_zh: "", desc_en: "", desc_zh: "" }] });
   };
 
-  const removeService = (i: number) => {
+  const removeAdminService = (i: number) => {
     if (!confirm("删除？")) return;
     setData({ ...data, services: data.services.filter((_, idx) => idx !== i) });
   };
@@ -601,13 +548,13 @@ function ServicesTab({ data, setData }: { data: SiteData; setData: React.Dispatc
   return (
     <div>
       <div className="flex gap-3 mb-6">
-        <button onClick={addService} className="flex items-center gap-2 px-4 py-2 bg-amber-500/90 hover:bg-amber-500 text-black text-sm font-medium rounded transition-colors"><Plus size={16} /> 添加服务</button>
+        <button onClick={addAdminService} className="flex items-center gap-2 px-4 py-2 bg-amber-500/90 hover:bg-amber-500 text-black text-sm font-medium rounded transition-colors"><Plus size={16} /> 添加服务</button>
       </div>
       {data.services.map((svc, i) => (
         <div key={i} className="bg-neutral-900 border border-neutral-800 rounded-lg p-6 mb-4">
           <div className="flex justify-between items-center mb-4">
             <strong className="text-sm text-neutral-300">{svc.title_zh || "新服务"}</strong>
-            <button onClick={() => removeService(i)} className="px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400/70 hover:text-red-400 text-xs rounded transition-colors">删除</button>
+            <button onClick={() => removeAdminService(i)} className="px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400/70 hover:text-red-400 text-xs rounded transition-colors">删除</button>
           </div>
           <div className="grid grid-cols-2 gap-4 mb-4">
             <div>
@@ -636,7 +583,7 @@ function ServicesTab({ data, setData }: { data: SiteData; setData: React.Dispatc
 }
 
 // Site Tab
-function SiteTab({ data, setData }: { data: SiteData; setData: React.Dispatch<React.SetStateAction<SiteData | null>> }) {
+function SiteTab({ data, setData }: { data: AdminSiteData; setData: React.Dispatch<React.SetStateAction<AdminSiteData | null>> }) {
   const updateSite = (field: string, value: string) => {
     setData({ ...data, site: { ...data.site, [field]: value } });
   };

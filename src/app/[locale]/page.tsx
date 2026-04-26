@@ -20,23 +20,23 @@ export default async function HomePage({
     }),
   ]);
 
-  const formatted = categories.map((c) => ({
+  const formatted: import("@/types").Category[] = categories.map((c) => ({
     id: c.id,
     key: c.key,
-    name_en: c.nameEn,
-    name_zh: c.nameZh,
-    sort_order: c.sortOrder,
+    nameEn: c.nameEn,
+    nameZh: c.nameZh,
+    sortOrder: c.sortOrder,
     projects: c.projects.map((p) => ({
       id: p.id,
-      title_en: p.titleEn,
-      title_zh: p.titleZh,
+      titleEn: p.titleEn,
+      titleZh: p.titleZh,
       cover: p.cover,
-      image_folder: p.imageFolder,
-      images: JSON.parse(p.images || "[]"),
-      content_zh: parseContent(p.contentZh),
-      content_en: parseContent(p.contentEn),
+      imageFolder: p.imageFolder,
+      images: p.images,
+      contentZh: parseContent(p.contentZh),
+      contentEn: parseContent(p.contentEn),
       link: p.link,
-      sort_order: p.sortOrder,
+      sortOrder: p.sortOrder,
     })),
   }));
 
