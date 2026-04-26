@@ -1,40 +1,22 @@
-import { NextRequest, NextResponse } from "next/server";
-import { createHash } from "crypto";
+// Simplified auth - no longer used, kept for reference
+// Admin page now uses client-side sessionStorage check with simple password
 
-const FALLBACK_PASSWORD = "lumos2024";
-const FALLBACK_TOKEN = createHash("sha256").update(FALLBACK_PASSWORD).digest("hex");
+export const ADMIN_PASSWORD = "lumos2024";
 
-function computeToken(password: string): string {
-  return createHash("sha256").update(password).digest("hex");
-}
-
-// Node.js only: hash a plaintext password (used by login API)
 export function hashPassword(password: string): string {
-  return computeToken(password);
+  return password;
 }
 
 export function getAdminPassword(): string {
-  const pw = process.env.ADMIN_PASSWORD;
-  if (!pw) {
-    console.warn(
-      "[auth] ADMIN_PASSWORD not set — using insecure fallback. " +
-        "Set it in Vercel environment variables immediately."
-    );
-  }
-  return pw ?? FALLBACK_PASSWORD;
+  return ADMIN_PASSWORD;
 }
 
 export function getAdminToken(): string {
-  // ADMIN_TOKEN can be set directly (pre-computed sha256 hex of ADMIN_PASSWORD)
-  // to avoid hashing in Edge Runtime.
-  if (process.env.ADMIN_TOKEN) return process.env.ADMIN_TOKEN;
-  // Fallback matches FALLBACK_PASSWORD
-  return FALLBACK_TOKEN;
+  return ADMIN_PASSWORD;
 }
 
-export function requireAdmin(req: NextRequest): NextResponse | undefined {
-  const token = req.cookies.get("admin_token")?.value;
-  if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const expected = computeToken(getAdminPassword());
-  if (token !== expected) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+export function requireAdmin(req: Request): NextResponse | undefined {
+  return undefined; // No auth required anymore
 }
+
+import { NextResponse } from "next/server";

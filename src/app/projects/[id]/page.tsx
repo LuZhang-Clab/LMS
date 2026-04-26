@@ -20,7 +20,7 @@ function resolveCoverUrl(cover: string | null, imageFolder: string | null): stri
   if (cover) {
     if (cover.startsWith("http")) return cover;
     if (cover.startsWith("/")) return cover;
-    return `/images/projects/${imageFolder}/${cover}`;
+    return `/images/projects/${imageFolder || "default"}/${cover}`;
   }
   if (imageFolder) return `/images/projects/${imageFolder}/cover.jpg`;
   return "";

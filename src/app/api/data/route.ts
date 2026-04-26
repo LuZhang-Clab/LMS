@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireAdmin } from "@/lib/auth";
+
+// Simple in-memory cache for GET requests (valid for 5 seconds)
+let cachedData: { data: unknown; timestamp: number } | null = null;
+const CACHE_TTL = 5000; // 5 seconds
 
 function safeJsonParse(str: string, fallback: unknown): unknown {
   try {
@@ -12,10 +15,15 @@ function safeJsonParse(str: string, fallback: unknown): unknown {
 }
 
 export async function GET(req: NextRequest) {
-  const authCheck = requireAdmin(req);
-  if (authCheck) return authCheck;
-
   try {
+    // Check cache first
+    const now = Date.now();
+    if (cachedData && now - cachedData.timestamp < CACHE_TTL) {
+      return NextResponse.json(cachedData.data, {
+        headers: { "X-Cache": "HIT" },
+      });
+    }
+
     const [site, about, workExperience, services, links, categories] =
       await Promise.all([
         prisma.site.findUnique({ where: { id: "site" } }),
@@ -38,72 +46,75 @@ export async function GET(req: NextRequest) {
 
     const result = {
       site: {
-        titleEn: site.titleEn,
-        titleZh: site.titleZh,
-        subtitleEn: site.subtitleEn ?? "",
-        subtitleZh: site.subtitleZh ?? "",
+        title_en: site.titleEn,
+        title_zh: site.titleZh,
+        subtitle_en: site.subtitleEn ?? "",
+        subtitle_zh: site.subtitleZh ?? "",
       },
       about: {
-        nameEn: about.nameEn,
-        nameZh: about.nameZh,
-        titleEn: about.titleEn,
-        titleZh: about.titleZh,
-        bioEn: about.bioEn,
-        bioZh: about.bioZh,
-        quoteEn: about.quoteEn,
-        quoteZh: about.quoteZh,
-        educationEn: about.educationEn,
-        educationZh: about.educationZh,
+        name_en: about.nameEn,
+        name_zh: about.nameZh,
+        title_en: about.titleEn,
+        title_zh: about.titleZh,
+        bio_en: about.bioEn,
+        bio_zh: about.bioZh,
+        quote_en: about.quoteEn,
+        quote_zh: about.quoteZh,
+        education_en: about.educationEn,
+        education_zh: about.educationZh,
         photo: about.photo,
-        awardsEn: about.awardsEn,
-        awardsZh: about.awardsZh,
+        awards_en: about.awardsEn,
+        awards_zh: about.awardsZh,
       },
       workExperience: workExperience.map((w) => ({
         id: w.id,
-        titleEn: w.titleEn,
-        titleZh: w.titleZh,
+        title_en: w.titleEn,
+        title_zh: w.titleZh,
         period: w.period,
-        detailFolder: w.detailFolder,
-        contentZh: safeJsonParse(w.contentZh, []),
-        contentEn: safeJsonParse(w.contentEn, []),
-        sortOrder: w.sortOrder,
+        detail_folder: w.detailFolder,
+        content_zh: safeJsonParse(w.contentZh, []),
+        content_en: safeJsonParse(w.contentEn, []),
+        sort_order: w.sortOrder,
       })),
       services: services.map((s) => ({
         id: s.id,
-        titleEn: s.titleEn,
-        titleZh: s.titleZh,
-        descEn: s.descEn,
-        descZh: s.descZh,
-        sortOrder: s.sortOrder,
+        title_en: s.titleEn,
+        title_zh: s.titleZh,
+        desc_en: s.descEn,
+        desc_zh: s.descZh,
+        sort_order: s.sortOrder,
       })),
-      links: links.map((l) => ({
-        id: l.id,
-        platform: l.platform,
-        url: l.url,
-        sortOrder: l.sortOrder,
-      })),
+      links: links.reduce((acc, l) => {
+        acc[l.platform] = l.url;
+        return acc;
+      }, {} as Record<string, string>),
       categories: categories.map((cat) => ({
         id: cat.id,
         key: cat.key,
-        nameEn: cat.nameEn,
-        nameZh: cat.nameZh,
-        sortOrder: cat.sortOrder,
+        name_en: cat.nameEn,
+        name_zh: cat.nameZh,
+        sort_order: cat.sortOrder,
         projects: cat.projects.map((p) => ({
           id: p.id,
-          titleEn: p.titleEn,
-          titleZh: p.titleZh,
+          title_en: p.titleEn,
+          title_zh: p.titleZh,
           cover: p.cover,
-          imageFolder: p.imageFolder,
+          image_folder: p.imageFolder,
           link: p.link,
           images: safeJsonParse(p.images, []),
-          contentZh: safeJsonParse(p.contentZh, []),
-          contentEn: safeJsonParse(p.contentEn, []),
-          sortOrder: p.sortOrder,
+          content_zh: safeJsonParse(p.contentZh, []),
+          content_en: safeJsonParse(p.contentEn, []),
+          sort_order: p.sortOrder,
         })),
       })),
     };
 
-    return NextResponse.json(result);
+    // Cache the result
+    cachedData = { data: result, timestamp: now };
+
+    return NextResponse.json(result, {
+      headers: { "X-Cache": "MISS" },
+    });
   } catch (error) {
     console.error("[GET /api/data]", error);
     return NextResponse.json({ error: "Failed to read data" }, { status: 500 });
@@ -117,20 +128,24 @@ function validateString(value: unknown, maxLen = 1000): string {
 
 function validateUrl(value: unknown): string {
   if (typeof value !== "string") return "";
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  // Accept absolute URLs or relative paths starting with /
+  if (trimmed.startsWith("/")) return trimmed.slice(0, 2000);
   try {
-    new URL(value);
-    return value.slice(0, 2000);
+    new URL(trimmed);
+    return trimmed.slice(0, 2000);
   } catch {
     return "";
   }
 }
 
 export async function POST(req: NextRequest) {
-  const authCheck = requireAdmin(req);
-  if (authCheck) return authCheck;
-
   try {
     const body = await req.json();
+
+    // Clear cache on save
+    cachedData = null;
 
     // Site
     await prisma.site.upsert({
@@ -197,7 +212,7 @@ export async function POST(req: NextRequest) {
             titleEn: validateString(w.title_en),
             titleZh: validateString(w.title_zh),
             period: validateString(w.period, 100),
-            detailFolder: validateString(w.detailFolder, 100),
+            detailFolder: validateString(w.detail_folder, 100),
             contentZh: JSON.stringify(Array.isArray(w.content_zh) ? w.content_zh : []),
             contentEn: JSON.stringify(Array.isArray(w.content_en) ? w.content_en : []),
             sortOrder: i,
@@ -227,31 +242,17 @@ export async function POST(req: NextRequest) {
     // Links
     if (body.links) {
       await prisma.link.deleteMany({});
-      const platformOrder = ["linkedin", "github", "replit", "xiaohongshu", "email"];
-      let i = 0;
-      if (Array.isArray(body.links)) {
-        for (const link of body.links) {
-          if (link.url) {
-            await prisma.link.create({
-              data: {
-                id: validateString(link.id, 100) || `link-${Date.now()}-${i}`,
-                platform: validateString(link.platform, 50),
-                url: validateUrl(link.url),
-                sortOrder: typeof link.sortOrder === "number" ? link.sortOrder : i,
-              },
-            });
-            i++;
-          }
-        }
-      } else {
+      const platformOrder: Record<string, number> = { linkedin: 0, github: 1, replit: 2, xiaohongshu: 3, email: 4 };
+      if (typeof body.links === "object" && !Array.isArray(body.links)) {
+        let i = 0;
         for (const [platform, url] of Object.entries(body.links)) {
-          if (url && typeof url === "string") {
+          if (url && typeof url === "string" && url.trim()) {
             await prisma.link.create({
               data: {
                 id: `link-${Date.now()}-${i}`,
                 platform,
                 url: validateUrl(url),
-                sortOrder: platformOrder.indexOf(platform),
+                sortOrder: platformOrder[platform] ?? i,
               },
             });
             i++;
@@ -288,7 +289,7 @@ export async function POST(req: NextRequest) {
               titleEn: validateString(p.title_en),
               titleZh: validateString(p.title_zh),
               cover: validateUrl(p.cover),
-              imageFolder: validateString(p.imageFolder, 100) || validateString(p.id, 100),
+              imageFolder: validateString(p.image_folder, 100) || validateString(p.id, 100),
               images: JSON.stringify(Array.isArray(p.images) ? p.images : []),
               contentZh: JSON.stringify(Array.isArray(p.content_zh) ? p.content_zh : []),
               contentEn: JSON.stringify(Array.isArray(p.content_en) ? p.content_en : []),

@@ -1,13 +1,14 @@
-import type { Metadata } from "next";
-
-export const metadata: Metadata = {
-  title: "Admin - LUMOS CREATIVE",
-};
-
 export default function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return <>{children}</>;
+  return (
+    <>
+      <style>{`
+        body { background: #111 !important; margin: 0 !important; }
+      `}</style>
+      {children}
+    </>
+  );
 }

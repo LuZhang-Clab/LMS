@@ -1,5 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/auth";
+import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
 
@@ -7,9 +6,6 @@ const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp", "im
 const MAX_SIZE = 10 * 1024 * 1024; // 10MB
 
 export async function POST(request: Request) {
-  const authCheck = requireAdmin(request as NextRequest);
-  if (authCheck) return authCheck;
-
   try {
     const formData = await request.formData();
     const file = formData.get("file");
@@ -37,7 +33,10 @@ export async function POST(request: Request) {
     const buffer = Buffer.from(bytes);
 
     const publicDir = path.join(process.cwd(), "public");
-    const uploadDir = path.join(publicDir, "images", folder);
+    // about photos go to /images/about/, other files to /images/projects/{folder}/
+    const uploadDir = folder === "about"
+      ? path.join(publicDir, "images", "about")
+      : path.join(publicDir, "images", "projects", folder);
 
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
@@ -46,7 +45,9 @@ export async function POST(request: Request) {
     const filepath = path.join(uploadDir, filename);
     fs.writeFileSync(filepath, buffer);
 
-    const url = `/images/${folder}/${filename}`;
+    const url = folder === "about"
+      ? `/images/about/${filename}`
+      : `/images/projects/${folder}/${filename}`;
     return NextResponse.json({ url });
   } catch (error) {
     console.error("[POST /api/upload]", error);

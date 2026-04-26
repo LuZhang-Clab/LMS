@@ -17,6 +17,7 @@
   --font-noto-sans: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
   --font-noto-serif: "Noto Serif SC", "Songti SC", "SimSun", Georgia, serif;
   --font-dm-serif: "DM Serif Display", Georgia, "Times New Roman", serif;
+  --font-dm-sans: "DM Sans", "Noto Sans SC", system-ui, sans-serif;
 }
 
 @theme inline {
@@ -47,6 +48,13 @@ body {
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
   line-height: 1.6;
+  min-height: 100vh;
+}
+
+/* Admin mode - dark background */
+body.admin-mode {
+  background: #111 !important;
+  margin: 0 !important;
 }
 
 ::selection {
@@ -1209,6 +1217,10 @@ body {
 
   #cursor-canvas {
     display: none;
+  }
+
+  .admin-page {
+    padding-bottom: 60px;
   }
 
   .site-header {

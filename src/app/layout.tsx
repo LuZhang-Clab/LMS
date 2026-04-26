@@ -21,24 +21,12 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.cn" />
         <link rel="preconnect" href="https://fonts.gstatic.cn" crossOrigin="anonymous" />
         <link
-          href="https://fonts.googleapis.cn/css2?family=DM+Serif+Display:ital@0;1&family=Noto+Serif+SC:wght@400;700&family=Noto+Sans+SC:wght@300;400;500&display=swap"
+          href="https://fonts.googleapis.cn/css2?family=DM+Sans:wght@300;400;500;700&family=DM+Serif+Display:ital@0;1&family=Noto+Serif+SC:wght@400;700&family=Noto+Sans+SC:wght@300;400;500&display=swap"
           rel="stylesheet"
         />
       </head>
       <body>
         <LocaleProvider>
-          {/* Custom Cursor Canvas */}
-          <canvas id="cursor-canvas"></canvas>
-
-          {/* Splash Screen */}
-          <div id="splash">
-            <canvas id="splash-canvas"></canvas>
-            <div className="splash-text-wrap">
-              <div className="splash-brand" id="splash-brand">LUMOS CREATIVE</div>
-              <div className="splash-sub" id="splash-sub">里面是·创意事务</div>
-            </div>
-          </div>
-
           {children}
         </LocaleProvider>
       </body>

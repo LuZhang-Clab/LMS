@@ -9,7 +9,7 @@ import { useLocale } from "@/context/LocaleProvider";
 function resolveImage(src: string, folder: string): string {
   if (src.startsWith("http")) return src;
   if (src.startsWith("/")) return src;
-  return `/images/projects/${folder}/${src}`;
+  return `/images/projects/${folder || "default"}/${src}`;
 }
 
 interface ProjectDetailClientProps {
