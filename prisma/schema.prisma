@@ -1,0 +1,87 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Site {
+  id         String  @id @default("site")
+  titleEn    String  @map("title_en")
+  titleZh    String  @map("title_zh")
+  subtitleEn String? @map("subtitle_en")
+  subtitleZh String? @map("subtitle_zh")
+}
+
+model About {
+  id           String @id @default("about")
+  nameEn      String @map("name_en")
+  nameZh      String @map("name_zh")
+  titleEn     String @map("title_en")
+  titleZh     String @map("title_zh")
+  bioEn       String @map("bio_en")
+  bioZh       String @map("bio_zh")
+  quoteEn     String @map("quote_en")
+  quoteZh     String @map("quote_zh")
+  educationEn String @map("education_en")
+  educationZh String @map("education_zh")
+  photo       String @default("/images/about/0.jpg")
+}
+
+model WorkExperience {
+  id          String @id @default(cuid())
+  titleEn     String @map("title_en")
+  titleZh     String @map("title_zh")
+  period      String
+  detailFolder String @map("detail_folder")
+  contentZh   String @map("content_zh") // JSON serialized array
+  contentEn   String @map("content_en") // JSON serialized array
+  sortOrder   Int    @default(0) @map("sort_order")
+}
+
+model Service {
+  id      String @id @default(cuid())
+  titleEn String @map("title_en")
+  titleZh String @map("title_zh")
+  descEn  String @map("desc_en")
+  descZh  String @map("desc_zh")
+  sortOrder Int  @default(0) @map("sort_order")
+}
+
+model Link {
+  id          String @id @default(cuid())
+  platform    String // linkedin, github, replit, xiaohongshu, email
+  url         String
+  sortOrder   Int    @default(0) @map("sort_order")
+}
+
+model Category {
+  id      String @id @default(cuid())
+  key     String @unique // large-scale-events, art-tech, etc.
+  nameEn  String @map("name_en")
+  nameZh  String @map("name_zh")
+  sortOrder Int  @default(0) @map("sort_order")
+  projects Project[]
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  categoryId  String   @map("category_id")
+  category    Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  titleEn     String   @map("title_en")
+  titleZh     String   @map("title_zh")
+  cover       String   @default("")
+  imageFolder String   @map("image_folder")
+  images      String   @default("[]") // JSON serialized array of image URLs
+  contentZh   String   @map("content_zh") // JSON serialized array
+  contentEn   String   @map("content_en") // JSON serialized array
+  link        String   @default("")
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+}

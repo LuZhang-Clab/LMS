@@ -1,0 +1,28 @@
+{
+  "nav": {
+    "home": "首页",
+    "about": "关于我们",
+    "projects": "项目",
+    "contact": "联系我们"
+  },
+  "hero": {
+    "title": "创意数字体验",
+    "subtitle": "我们打造精美、高性能的网页应用，激发灵感、打动人心。",
+    "cta": "查看作品"
+  },
+  "about": {
+    "title": "关于我们",
+    "description": "我们是一支充满热情的团队，致力于创造卓越的数字体验。"
+  },
+  "projects": {
+    "title": "我们的项目",
+    "subtitle": "精选近期作品"
+  },
+  "contact": {
+    "title": "联系我们",
+    "subtitle": "有项目想法？让我们一起创造精彩。"
+  },
+  "footer": {
+    "rights": "版权所有。"
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "nav": {
+    "home": "Home",
+    "about": "About",
+    "projects": "Projects",
+    "contact": "Contact"
+  },
+  "hero": {
+    "title": "Creative Digital Experiences",
+    "subtitle": "We craft beautiful, high-performance web applications that inspire and engage.",
+    "cta": "View Our Work"
+  },
+  "about": {
+    "title": "About Us",
+    "description": "We are a passionate team dedicated to creating exceptional digital experiences."
+  },
+  "projects": {
+    "title": "Our Projects",
+    "subtitle": "A selection of our recent work"
+  },
+  "contact": {
+    "title": "Get In Touch",
+    "subtitle": "Have a project in mind? Let's create something amazing together."
+  },
+  "footer": {
+    "rights": "All rights reserved."
+  }
+}
