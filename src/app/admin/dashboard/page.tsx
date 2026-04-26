@@ -144,7 +144,7 @@ function AboutEditor({
 }: { about: SiteData["about"]; save: (p: object) => void; saving: boolean }) {
   const [f, setF] = useState(about);
 
-  // Map display keys to snake_case API field names
+  // Map camelCase form keys to snake_case API field names
   const fieldMap: Record<string, string> = {
     nameZh: "name_zh", nameEn: "name_en",
     titleZh: "title_zh", titleEn: "title_en",
@@ -155,10 +155,11 @@ function AboutEditor({
   };
 
   function field(k: string) {
+    const apiKey = fieldMap[k] ?? k;
     return {
-      value: f[fieldMap[k] ?? k] as string,
+      value: (f as unknown as Record<string, string>)[apiKey] ?? "",
       onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-        setF({ ...f, [fieldMap[k] ?? k]: e.target.value }),
+        setF({ ...f, [apiKey]: e.target.value } as typeof f),
     };
   }
 

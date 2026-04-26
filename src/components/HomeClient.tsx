@@ -544,7 +544,7 @@ export default function HomeClient({ categories, about, locale }: HomeClientProp
                   <div className="arrow" />
                   <h2>
                     {isEn
-                      ? cat.nameEn.replace(/\b\w/g, (c) => c.toUpperCase())
+                      ? (cat.nameEn || "").replace(/\b\w/g, (c) => c.toUpperCase())
                       : cat.nameZh}
                   </h2>
                 </div>

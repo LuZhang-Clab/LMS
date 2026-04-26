@@ -21,11 +21,22 @@ export default async function HomePage({
   ]);
 
   const formatted = categories.map((c) => ({
-    ...c,
+    id: c.id,
+    key: c.key,
+    name_en: c.nameEn,
+    name_zh: c.nameZh,
+    sort_order: c.sortOrder,
     projects: c.projects.map((p) => ({
-      ...p,
-      contentZh: parseContent(p.contentZh),
-      contentEn: parseContent(p.contentEn),
+      id: p.id,
+      title_en: p.titleEn,
+      title_zh: p.titleZh,
+      cover: p.cover,
+      image_folder: p.imageFolder,
+      images: JSON.parse(p.images || "[]"),
+      content_zh: parseContent(p.contentZh),
+      content_en: parseContent(p.contentEn),
+      link: p.link,
+      sort_order: p.sortOrder,
     })),
   }));
 

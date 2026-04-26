@@ -63,11 +63,7 @@ export default async function AboutPage({
   return (
     <AboutClient
       about={aboutData}
-      workExperience={workExperience.map((w) => ({
-        ...w,
-        contentZh: [],
-        contentEn: [],
-      }))}
+      workExperience={workExperience}
       services={services}
       links={links}
       locale={locale}

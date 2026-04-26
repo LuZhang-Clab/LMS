@@ -1,6 +1,5 @@
 // ============================================================
-// Shared TypeScript types mirroring the /api/data response shape
-// (API returns snake_case field names to match Prisma column naming)
+// Shared TypeScript types matching Prisma schema (camelCase)
 // ============================================================
 
 export type ContentBlock =
@@ -10,75 +9,75 @@ export type ContentBlock =
   | { type: "link"; text: string; url: string };
 
 export interface Site {
-  title_en: string;
-  title_zh: string;
-  subtitle_en: string;
-  subtitle_zh: string;
+  id: string;
+  titleEn: string;
+  titleZh: string;
+  subtitleEn: string;
+  subtitleZh: string;
 }
 
 export interface About {
-  name_en: string;
-  name_zh: string;
-  title_en: string;
-  title_zh: string;
-  bio_en: string;
-  bio_zh: string;
-  quote_en: string;
-  quote_zh: string;
-  education_en: string;
-  education_zh: string;
+  id: string;
+  nameEn: string;
+  nameZh: string;
+  titleEn: string;
+  titleZh: string;
+  bioEn: string;
+  bioZh: string;
+  quoteEn: string;
+  quoteZh: string;
+  educationEn: string;
+  educationZh: string;
   photo: string;
 }
 
 export interface WorkExperience {
   id: string;
-  title_en: string;
-  title_zh: string;
+  titleEn: string;
+  titleZh: string;
   period: string;
-  detail_folder: string;
-  content_zh: ContentBlock[];
-  content_en: ContentBlock[];
-  sort_order: number;
+  detailFolder: string;
+  contentZh: string;
+  contentEn: string;
+  sortOrder: number;
 }
 
 export interface Service {
   id: string;
-  title_en: string;
-  title_zh: string;
-  desc_en: string;
-  desc_zh: string;
-  sort_order: number;
+  titleEn: string;
+  titleZh: string;
+  descEn: string;
+  descZh: string;
+  sortOrder: number;
 }
 
 export interface Link {
   id: string;
   platform: string;
   url: string;
-  sort_order: number;
+  sortOrder: number;
 }
-
-// Alias for use in components that import Next.js Link
-export type SiteLink = Link;
 
 export interface Project {
   id: string;
-  title_en: string;
-  title_zh: string;
+  titleEn: string;
+  titleZh: string;
   cover: string;
-  image_folder: string;
-  images: ContentBlock[];
-  content_zh: ContentBlock[];
-  content_en: ContentBlock[];
+  imageFolder: string;
+  images: string;
+  contentZh: string;
+  contentEn: string;
   link: string;
-  sort_order: number;
+  sortOrder: number;
+  categoryId?: string;
 }
 
 export interface Category {
   id: string;
   key: string;
-  name_en: string;
-  name_zh: string;
-  sort_order: number;
+  nameEn: string;
+  nameZh: string;
+  sortOrder: number;
   projects: Project[];
 }
 
