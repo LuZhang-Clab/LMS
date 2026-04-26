@@ -31,6 +31,8 @@ model About {
   educationEn String @map("education_en")
   educationZh String @map("education_zh")
   photo       String @default("/images/about/0.jpg")
+  awardsEn    String @default("") @map("awards_en")
+  awardsZh    String @default("") @map("awards_zh")
 }
 
 model WorkExperience {

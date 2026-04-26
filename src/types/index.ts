@@ -52,6 +52,7 @@ export interface AdminSiteData {
     quote_en: string; quote_zh: string;
     education_en: string; education_zh: string;
     photo: string;
+    awards_en?: string; awards_zh?: string;
   };
   workExperience: AdminWorkExperience[];
   services: AdminService[];
@@ -87,6 +88,8 @@ export interface About {
   educationEn: string;
   educationZh: string;
   photo: string;
+  awardsEn?: string;
+  awardsZh?: string;
 }
 
 export interface WorkExperience {

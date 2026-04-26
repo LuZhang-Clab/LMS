@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createHash } from "crypto";
+import { requireAdmin } from "@/lib/auth";
 
-// Field name constants to avoid typos
 const ABOUT_FIELDS = [
   "name_en", "name_zh",
   "title_en", "title_zh",
@@ -10,18 +9,29 @@ const ABOUT_FIELDS = [
   "education_en", "education_zh",
 ] as const;
 
-type AboutField = typeof ABOUT_FIELDS[number];
-
-function snakeToCamel(s: string): string {
-  return s.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
+function validateString(value: unknown, maxLen = 1000): string {
+  if (typeof value !== "string") return "";
+  return value.slice(0, maxLen);
 }
 
-function requireAdmin(req: NextRequest): NextResponse | undefined {
-  const token = req.cookies.get("admin_token")?.value;
-  if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const adminSecret = process.env.ADMIN_PASSWORD ?? "lumos2024";
-  const expected = createHash("sha256").update(adminSecret).digest("hex");
-  if (token !== expected) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+function validateUrl(value: unknown): string {
+  if (typeof value !== "string") return "";
+  try {
+    new URL(value);
+    return value.slice(0, 2000);
+  } catch {
+    return "";
+  }
+}
+
+function validateSortOrder(value: unknown): number {
+  const n = Number(value);
+  return isNaN(n) ? 0 : Math.max(0, Math.floor(n));
+}
+
+function validateJsonArray(value: unknown): string {
+  if (Array.isArray(value)) return JSON.stringify(value);
+  return "[]";
 }
 
 export async function PUT(req: NextRequest) {
@@ -30,14 +40,19 @@ export async function PUT(req: NextRequest) {
 
   const body = await req.json();
   const { type, ...data } = body as Record<string, unknown>;
+
+  if (!type || typeof type !== "string") {
+    return NextResponse.json({ error: "Missing or invalid 'type' field" }, { status: 400 });
+  }
+
   const prisma = (await import("@/lib/db")).prisma;
 
   switch (type) {
     case "site": {
-      const titleEn = String(data.titleEn ?? data.title_en ?? "");
-      const titleZh = String(data.titleZh ?? data.title_zh ?? "");
-      const subtitleEn = String(data.subtitleEn ?? data.subtitle_en ?? "");
-      const subtitleZh = String(data.subtitleZh ?? data.subtitle_zh ?? "");
+      const titleEn = validateString(data.titleEn ?? data.title_en);
+      const titleZh = validateString(data.titleZh ?? data.title_zh);
+      const subtitleEn = validateString(data.subtitleEn ?? data.subtitle_en);
+      const subtitleZh = validateString(data.subtitleZh ?? data.subtitle_zh);
       const result = await prisma.site.upsert({
         where: { id: "site" },
         update: { titleEn, titleZh, subtitleEn, subtitleZh },
@@ -47,20 +62,22 @@ export async function PUT(req: NextRequest) {
     }
 
     case "about": {
-      const photo = String(data.photo ?? "");
+      const photo = validateUrl(data.photo) || "/images/about/0.jpg";
       const aboutData = {
         id: "about",
-        nameEn: String(data.nameEn ?? data.name_en ?? ""),
-        nameZh: String(data.nameZh ?? data.name_zh ?? ""),
-        titleEn: String(data.titleEn ?? data.title_en ?? ""),
-        titleZh: String(data.titleZh ?? data.title_zh ?? ""),
-        bioEn: String(data.bioEn ?? data.bio_en ?? ""),
-        bioZh: String(data.bioZh ?? data.bio_zh ?? ""),
-        quoteEn: String(data.quoteEn ?? data.quote_en ?? ""),
-        quoteZh: String(data.quoteZh ?? data.quote_zh ?? ""),
-        educationEn: String(data.educationEn ?? data.education_en ?? ""),
-        educationZh: String(data.educationZh ?? data.education_zh ?? ""),
-        photo: photo || "/images/about/0.jpg",
+        nameEn: validateString(data.nameEn ?? data.name_en),
+        nameZh: validateString(data.nameZh ?? data.name_zh),
+        titleEn: validateString(data.titleEn ?? data.title_en),
+        titleZh: validateString(data.titleZh ?? data.title_zh),
+        bioEn: validateString(data.bioEn ?? data.bio_en, 5000),
+        bioZh: validateString(data.bioZh ?? data.bio_zh, 5000),
+        quoteEn: validateString(data.quoteEn ?? data.quote_en, 2000),
+        quoteZh: validateString(data.quoteZh ?? data.quote_zh, 2000),
+        educationEn: validateString(data.educationEn ?? data.education_en, 1000),
+        educationZh: validateString(data.educationZh ?? data.education_zh, 1000),
+        awardsEn: validateString(data.awardsEn ?? data.awards_en, 3000),
+        awardsZh: validateString(data.awardsZh ?? data.awards_zh, 3000),
+        photo,
       };
       const result = await prisma.about.upsert({
         where: { id: "about" },
@@ -71,25 +88,25 @@ export async function PUT(req: NextRequest) {
     }
 
     case "category": {
-      const id = String(data.id ?? "");
-      const nameEn = String(data.nameEn ?? data.name_en ?? "");
-      const nameZh = String(data.nameZh ?? data.name_zh ?? "");
-      const sortOrder = Number(data.sortOrder ?? data.sort_order ?? 0);
+      const id = validateString(data.id, 100);
+      const nameEn = validateString(data.nameEn ?? data.name_en);
+      const nameZh = validateString(data.nameZh ?? data.name_zh);
+      const sortOrder = validateSortOrder(data.sortOrder ?? data.sort_order);
       const result = await prisma.category.upsert({
         where: { id },
         update: { nameEn, nameZh, sortOrder },
-        create: { id, key: id || String(Date.now()), nameEn, nameZh, sortOrder },
+        create: { id: id || String(Date.now()), key: id || String(Date.now()), nameEn, nameZh, sortOrder },
       });
       return NextResponse.json(result);
     }
 
     case "service": {
-      const id = String(data.id ?? "");
-      const titleEn = String(data.titleEn ?? data.title_en ?? "");
-      const titleZh = String(data.titleZh ?? data.title_zh ?? "");
-      const descEn = String(data.descEn ?? data.desc_en ?? "");
-      const descZh = String(data.descZh ?? data.desc_zh ?? "");
-      const sortOrder = Number(data.sortOrder ?? data.sort_order ?? 0);
+      const id = validateString(data.id, 100);
+      const titleEn = validateString(data.titleEn ?? data.title_en);
+      const titleZh = validateString(data.titleZh ?? data.title_zh);
+      const descEn = validateString(data.descEn ?? data.desc_en, 2000);
+      const descZh = validateString(data.descZh ?? data.desc_zh, 2000);
+      const sortOrder = validateSortOrder(data.sortOrder ?? data.sort_order);
       const result = await prisma.service.upsert({
         where: { id },
         update: { titleEn, titleZh, descEn, descZh, sortOrder },
@@ -99,10 +116,13 @@ export async function PUT(req: NextRequest) {
     }
 
     case "link": {
-      const id = String(data.id ?? "");
-      const platform = String(data.platform ?? "");
-      const url = String(data.url ?? "");
-      const sortOrder = Number(data.sortOrder ?? data.sort_order ?? 0);
+      const id = validateString(data.id, 100);
+      const platform = validateString(data.platform, 50);
+      const url = validateUrl(data.url);
+      const sortOrder = validateSortOrder(data.sortOrder ?? data.sort_order);
+      if (!platform) {
+        return NextResponse.json({ error: "Platform is required" }, { status: 400 });
+      }
       const result = await prisma.link.upsert({
         where: { id },
         update: { platform, url, sortOrder },
@@ -112,38 +132,45 @@ export async function PUT(req: NextRequest) {
     }
 
     case "project": {
-      const id = String(data.id ?? "");
-      const titleEn = String(data.titleEn ?? data.title_en ?? "");
-      const titleZh = String(data.titleZh ?? data.title_zh ?? "");
-      const cover = String(data.cover ?? "");
-      const imageFolder = String(data.imageFolder ?? data.image_folder ?? id);
-      const link = String(data.link ?? "");
-      const sortOrder = Number(data.sortOrder ?? data.sort_order ?? 0);
-      let images = "[]";
-      let contentZh = "[]";
-      let contentEn = "[]";
-      if (Array.isArray(data.images)) images = JSON.stringify(data.images);
-      if (Array.isArray(data.contentZh)) contentZh = JSON.stringify(data.contentZh);
-      if (Array.isArray(data.contentEn)) contentEn = JSON.stringify(data.contentEn);
+      const id = validateString(data.id, 100);
+      const categoryId = validateString(data.categoryId, 100);
+
+      if (!categoryId) {
+        return NextResponse.json({ error: "categoryId is required" }, { status: 400 });
+      }
+
+      const category = await prisma.category.findUnique({ where: { id: categoryId } });
+      if (!category) {
+        return NextResponse.json({ error: "Category not found" }, { status: 400 });
+      }
+
+      const titleEn = validateString(data.titleEn ?? data.title_en);
+      const titleZh = validateString(data.titleZh ?? data.title_zh);
+      const cover = validateUrl(data.cover);
+      const imageFolder = validateString(data.imageFolder ?? data.image_folder, 100) || id;
+      const link = validateUrl(data.link);
+      const sortOrder = validateSortOrder(data.sortOrder ?? data.sort_order);
+      const images = validateJsonArray(data.images);
+      const contentZh = validateJsonArray(data.contentZh);
+      const contentEn = validateJsonArray(data.contentEn);
+
       const result = await prisma.project.upsert({
         where: { id },
-        update: { titleEn, titleZh, cover, imageFolder, link, sortOrder, images, contentZh, contentEn },
-        create: { id, categoryId: String(data.categoryId ?? ""), titleEn, titleZh, cover, imageFolder, link, sortOrder, images, contentZh, contentEn },
+        update: { categoryId, titleEn, titleZh, cover, imageFolder, link, sortOrder, images, contentZh, contentEn },
+        create: { id, categoryId, titleEn, titleZh, cover, imageFolder, link, sortOrder, images, contentZh, contentEn },
       });
       return NextResponse.json(result);
     }
 
     case "work": {
-      const id = String(data.id ?? "");
-      const titleEn = String(data.titleEn ?? data.title_en ?? "");
-      const titleZh = String(data.titleZh ?? data.title_zh ?? "");
-      const period = String(data.period ?? "");
-      const detailFolder = String(data.detailFolder ?? data.detail_folder ?? id);
-      const sortOrder = Number(data.sortOrder ?? data.sort_order ?? 0);
-      let contentZh = "[]";
-      let contentEn = "[]";
-      if (Array.isArray(data.contentZh)) contentZh = JSON.stringify(data.contentZh);
-      if (Array.isArray(data.contentEn)) contentEn = JSON.stringify(data.contentEn);
+      const id = validateString(data.id, 100);
+      const titleEn = validateString(data.titleEn ?? data.title_en);
+      const titleZh = validateString(data.titleZh ?? data.title_zh);
+      const period = validateString(data.period, 100);
+      const detailFolder = validateString(data.detailFolder ?? data.detail_folder, 100) || id;
+      const sortOrder = validateSortOrder(data.sortOrder ?? data.sort_order);
+      const contentZh = validateJsonArray(data.contentZh);
+      const contentEn = validateJsonArray(data.contentEn);
       const result = await prisma.workExperience.upsert({
         where: { id },
         update: { titleEn, titleZh, period, detailFolder, sortOrder, contentZh, contentEn },
@@ -153,7 +180,7 @@ export async function PUT(req: NextRequest) {
     }
 
     default:
-      return NextResponse.json({ error: "Unknown type" }, { status: 400 });
+      return NextResponse.json({ error: `Unknown type: ${type}` }, { status: 400 });
   }
 }
 
@@ -163,6 +190,11 @@ export async function DELETE(req: NextRequest) {
 
   const body = await req.json();
   const { type, id } = body as { type: string; id: string };
+
+  if (!type || typeof type !== "string" || !id) {
+    return NextResponse.json({ error: "Missing 'type' or 'id'" }, { status: 400 });
+  }
+
   const prisma = (await import("@/lib/db")).prisma;
 
   switch (type) {
@@ -182,6 +214,6 @@ export async function DELETE(req: NextRequest) {
       await prisma.workExperience.delete({ where: { id } });
       return NextResponse.json({ success: true });
     default:
-      return NextResponse.json({ error: "Unknown type" }, { status: 400 });
+      return NextResponse.json({ error: `Unknown type: ${type}` }, { status: 400 });
   }
 }

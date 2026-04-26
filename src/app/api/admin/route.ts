@@ -1,26 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createHash } from "crypto";
 import { cookies } from "next/headers";
-
-function requireAdmin(req: NextRequest): boolean {
-  const token = req.cookies.get("admin_token")?.value;
-  if (!token) return false;
-  const adminSecret = process.env.ADMIN_PASSWORD ?? "lumos2024";
-  const expected = createHash("sha256").update(adminSecret).digest("hex");
-  return token === expected;
-}
+import { hashPassword, getAdminPassword } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
 
-    if (body.password) {
-      const adminPw = process.env.ADMIN_PASSWORD ?? "lumos2024";
+    if (body.password && typeof body.password === "string") {
+      const adminPw = getAdminPassword();
       if (body.password !== adminPw) {
         return NextResponse.json({ valid: false }, { status: 401 });
       }
-      const adminSecret = process.env.ADMIN_PASSWORD ?? "lumos2024";
-      const token = createHash("sha256").update(adminSecret).digest("hex");
+      const token = hashPassword(adminPw);
       const cookieStore = await cookies();
       cookieStore.set("admin_token", token, {
         httpOnly: true,
@@ -39,9 +30,10 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  if (!requireAdmin(req)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const { requireAdmin } = await import("@/lib/auth");
+  const authCheck = requireAdmin(req);
+  if (authCheck) return authCheck;
+
   const cookieStore = await cookies();
   cookieStore.delete("admin_token");
   return NextResponse.json({ success: true });

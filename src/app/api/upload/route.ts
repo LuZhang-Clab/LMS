@@ -1,33 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
-import { createHash } from "crypto";
+import { requireAdmin } from "@/lib/auth";
 import fs from "fs";
 import path from "path";
 
-function guard(req: NextRequest): NextResponse | undefined {
-  const token = req.cookies.get("admin_token")?.value;
-  if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const adminSecret = process.env.ADMIN_PASSWORD ?? "lumos2024";
-  const expected = createHash("sha256").update(adminSecret).digest("hex");
-  if (token !== expected) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-}
+const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml"];
+const MAX_SIZE = 10 * 1024 * 1024; // 10MB
 
 export async function POST(request: Request) {
-  const auth = guard(request as NextRequest);
-  if (auth) return auth;
+  const authCheck = requireAdmin(request as NextRequest);
+  if (authCheck) return authCheck;
 
   try {
     const formData = await request.formData();
-    const file = formData.get("file") as File;
+    const file = formData.get("file");
     const folder = (formData.get("folder") as string) || "uploads";
-    const projectId = (formData.get("projectId") as string) || "";
 
-    if (!file) {
+    if (!file || typeof file === "string") {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
-    const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml"];
-    const MAX_SIZE = 10 * 1024 * 1024; // 10MB
     if (!ALLOWED_TYPES.includes(file.type)) {
       return NextResponse.json({ error: "File type not allowed" }, { status: 400 });
     }
@@ -35,11 +26,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "File too large (max 10MB)" }, { status: 400 });
     }
 
+    // Sanitize filename — keep only safe chars
+    const rawExt = path.extname(file.name).toLowerCase();
+    const allowedExts = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg"];
+    const ext = allowedExts.includes(rawExt) ? rawExt : ".bin";
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 100);
+    const filename = `${Date.now()}-${safeName}${ext}`;
+
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-
-    const ext = path.extname(file.name);
-    const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}${ext}`;
 
     const publicDir = path.join(process.cwd(), "public");
     const uploadDir = path.join(publicDir, "images", folder);
@@ -52,10 +47,9 @@ export async function POST(request: Request) {
     fs.writeFileSync(filepath, buffer);
 
     const url = `/images/${folder}/${filename}`;
-
     return NextResponse.json({ url });
   } catch (error) {
-    console.error("Upload error:", error);
+    console.error("[POST /api/upload]", error);
     return NextResponse.json({ error: "Upload failed" }, { status: 500 });
   }
 }

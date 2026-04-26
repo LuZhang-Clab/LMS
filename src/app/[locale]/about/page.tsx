@@ -39,10 +39,8 @@ export default async function AboutPage({
         educationEn: about.educationEn,
         educationZh: about.educationZh,
         photo: about.photo,
-        awardsZh:
-          "第29届亚洲电视大奖 - 最佳娱乐节目奖（2024）\n中国电视艺术家协会 - 最佳作品奖（2023）\n上海国际艺术节 - 专题策划奖（2019，2020）",
-        awardsEn:
-          "29th Asian Television Awards - Best Entertainment (One-Off or Annual) (2024)\nChina Television Artists Association - Best Work Award (2023)\nShanghai International Arts Festival - Special Programming Award (2019, 2020)",
+        awardsZh: about.awardsZh || "",
+        awardsEn: about.awardsEn || "",
       }
     : {
         nameEn: "Lu Zhang",

@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
-import { createHash } from "crypto";
+import { requireAdmin } from "@/lib/auth";
 
 function safeJsonParse(str: string, fallback: unknown): unknown {
   try {
@@ -10,15 +11,10 @@ function safeJsonParse(str: string, fallback: unknown): unknown {
   }
 }
 
-function guard(req: NextRequest): NextResponse | undefined {
-  const token = req.cookies.get("admin_token")?.value;
-  if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const adminSecret = process.env.ADMIN_PASSWORD ?? "lumos2024";
-  const expected = createHash("sha256").update(adminSecret).digest("hex");
-  if (token !== expected) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-}
+export async function GET(req: NextRequest) {
+  const authCheck = requireAdmin(req);
+  if (authCheck) return authCheck;
 
-export async function GET() {
   try {
     const [site, about, workExperience, services, links, categories] =
       await Promise.all([
@@ -29,19 +25,17 @@ export async function GET() {
         prisma.link.findMany({ orderBy: { sortOrder: "asc" } }),
         prisma.category.findMany({
           orderBy: { sortOrder: "asc" },
-          include: {
-            projects: {
-              orderBy: { sortOrder: "asc" },
-            },
-          },
+          include: { projects: { orderBy: { sortOrder: "asc" } } },
         }),
       ]);
 
     if (!site || !about) {
-      return NextResponse.json({ error: "Database not initialized" }, { status: 500 });
+      return NextResponse.json(
+        { error: "Database not initialized. Run `npm run seed` to populate data." },
+        { status: 500 }
+      );
     }
 
-    // Reconstruct in the same shape the admin page expects
     const result = {
       site: {
         titleEn: site.titleEn,
@@ -61,6 +55,8 @@ export async function GET() {
         educationEn: about.educationEn,
         educationZh: about.educationZh,
         photo: about.photo,
+        awardsEn: about.awardsEn,
+        awardsZh: about.awardsZh,
       },
       workExperience: workExperience.map((w) => ({
         id: w.id,
@@ -114,25 +110,43 @@ export async function GET() {
   }
 }
 
-export async function POST(request: Request) {
+function validateString(value: unknown, maxLen = 1000): string {
+  if (typeof value !== "string") return "";
+  return value.slice(0, maxLen);
+}
+
+function validateUrl(value: unknown): string {
+  if (typeof value !== "string") return "";
   try {
-    const body = await request.json();
+    new URL(value);
+    return value.slice(0, 2000);
+  } catch {
+    return "";
+  }
+}
+
+export async function POST(req: NextRequest) {
+  const authCheck = requireAdmin(req);
+  if (authCheck) return authCheck;
+
+  try {
+    const body = await req.json();
 
     // Site
     await prisma.site.upsert({
       where: { id: "site" },
       update: {
-        titleEn: body.site?.title_en ?? "",
-        titleZh: body.site?.title_zh ?? "",
-        subtitleEn: body.site?.subtitle_en ?? "",
-        subtitleZh: body.site?.subtitle_zh ?? "",
+        titleEn: validateString(body.site?.title_en),
+        titleZh: validateString(body.site?.title_zh),
+        subtitleEn: validateString(body.site?.subtitle_en),
+        subtitleZh: validateString(body.site?.subtitle_zh),
       },
       create: {
         id: "site",
-        titleEn: body.site?.title_en ?? "",
-        titleZh: body.site?.title_zh ?? "",
-        subtitleEn: body.site?.subtitle_en ?? "",
-        subtitleZh: body.site?.subtitle_zh ?? "",
+        titleEn: validateString(body.site?.title_en),
+        titleZh: validateString(body.site?.title_zh),
+        subtitleEn: validateString(body.site?.subtitle_en),
+        subtitleZh: validateString(body.site?.subtitle_zh),
       },
     });
 
@@ -140,31 +154,35 @@ export async function POST(request: Request) {
     await prisma.about.upsert({
       where: { id: "about" },
       update: {
-        nameEn: body.about?.name_en ?? "",
-        nameZh: body.about?.name_zh ?? "",
-        titleEn: body.about?.title_en ?? "",
-        titleZh: body.about?.title_zh ?? "",
-        bioEn: body.about?.bio_en ?? "",
-        bioZh: body.about?.bio_zh ?? "",
-        quoteEn: body.about?.quote_en ?? "",
-        quoteZh: body.about?.quote_zh ?? "",
-        educationEn: body.about?.education_en ?? "",
-        educationZh: body.about?.education_zh ?? "",
-        photo: body.about?.photo ?? "/images/about/0.jpg",
+        nameEn: validateString(body.about?.name_en),
+        nameZh: validateString(body.about?.name_zh),
+        titleEn: validateString(body.about?.title_en),
+        titleZh: validateString(body.about?.title_zh),
+        bioEn: validateString(body.about?.bio_en, 5000),
+        bioZh: validateString(body.about?.bio_zh, 5000),
+        quoteEn: validateString(body.about?.quote_en, 2000),
+        quoteZh: validateString(body.about?.quote_zh, 2000),
+        educationEn: validateString(body.about?.education_en, 1000),
+        educationZh: validateString(body.about?.education_zh, 1000),
+        awardsEn: validateString(body.about?.awards_en, 3000),
+        awardsZh: validateString(body.about?.awards_zh, 3000),
+        photo: validateUrl(body.about?.photo) || "/images/about/0.jpg",
       },
       create: {
         id: "about",
-        nameEn: body.about?.name_en ?? "",
-        nameZh: body.about?.name_zh ?? "",
-        titleEn: body.about?.title_en ?? "",
-        titleZh: body.about?.title_zh ?? "",
-        bioEn: body.about?.bio_en ?? "",
-        bioZh: body.about?.bio_zh ?? "",
-        quoteEn: body.about?.quote_en ?? "",
-        quoteZh: body.about?.quote_zh ?? "",
-        educationEn: body.about?.education_en ?? "",
-        educationZh: body.about?.education_zh ?? "",
-        photo: body.about?.photo ?? "/images/about/0.jpg",
+        nameEn: validateString(body.about?.name_en),
+        nameZh: validateString(body.about?.name_zh),
+        titleEn: validateString(body.about?.title_en),
+        titleZh: validateString(body.about?.title_zh),
+        bioEn: validateString(body.about?.bio_en, 5000),
+        bioZh: validateString(body.about?.bio_zh, 5000),
+        quoteEn: validateString(body.about?.quote_en, 2000),
+        quoteZh: validateString(body.about?.quote_zh, 2000),
+        educationEn: validateString(body.about?.education_en, 1000),
+        educationZh: validateString(body.about?.education_zh, 1000),
+        awardsEn: validateString(body.about?.awards_en, 3000),
+        awardsZh: validateString(body.about?.awards_zh, 3000),
+        photo: validateUrl(body.about?.photo) || "/images/about/0.jpg",
       },
     });
 
@@ -175,13 +193,13 @@ export async function POST(request: Request) {
         const w = body.workExperience[i];
         await prisma.workExperience.create({
           data: {
-            id: w.id || `we-${Date.now()}-${i}`,
-            titleEn: w.title_en ?? "",
-            titleZh: w.title_zh ?? "",
-            period: w.period ?? "",
-            detailFolder: w.detailFolder ?? "",
-            contentZh: JSON.stringify(w.content_zh ?? []),
-            contentEn: JSON.stringify(w.content_en ?? []),
+            id: validateString(w.id, 100) || `we-${Date.now()}-${i}`,
+            titleEn: validateString(w.title_en),
+            titleZh: validateString(w.title_zh),
+            period: validateString(w.period, 100),
+            detailFolder: validateString(w.detailFolder, 100),
+            contentZh: JSON.stringify(Array.isArray(w.content_zh) ? w.content_zh : []),
+            contentEn: JSON.stringify(Array.isArray(w.content_en) ? w.content_en : []),
             sortOrder: i,
           },
         });
@@ -195,46 +213,44 @@ export async function POST(request: Request) {
         const s = body.services[i];
         await prisma.service.create({
           data: {
-            id: s.id || `svc-${Date.now()}-${i}`,
-            titleEn: s.title_en ?? "",
-            titleZh: s.title_zh ?? "",
-            descEn: s.desc_en ?? "",
-            descZh: s.desc_zh ?? "",
+            id: validateString(s.id, 100) || `svc-${Date.now()}-${i}`,
+            titleEn: validateString(s.title_en),
+            titleZh: validateString(s.title_zh),
+            descEn: validateString(s.desc_en, 2000),
+            descZh: validateString(s.desc_zh, 2000),
             sortOrder: i,
           },
         });
       }
     }
 
-    // Links (supports both array and object for backward compatibility)
+    // Links
     if (body.links) {
       await prisma.link.deleteMany({});
       const platformOrder = ["linkedin", "github", "replit", "xiaohongshu", "email"];
       let i = 0;
       if (Array.isArray(body.links)) {
-        // Array form: [{ platform, url, sortOrder }]
         for (const link of body.links) {
           if (link.url) {
             await prisma.link.create({
               data: {
-                id: link.id || `link-${Date.now()}-${i}`,
-                platform: link.platform,
-                url: link.url,
-                sortOrder: link.sortOrder ?? i,
+                id: validateString(link.id, 100) || `link-${Date.now()}-${i}`,
+                platform: validateString(link.platform, 50),
+                url: validateUrl(link.url),
+                sortOrder: typeof link.sortOrder === "number" ? link.sortOrder : i,
               },
             });
             i++;
           }
         }
       } else {
-        // Object form: { linkedin: "url", github: "url" }
         for (const [platform, url] of Object.entries(body.links)) {
-          if (url) {
+          if (url && typeof url === "string") {
             await prisma.link.create({
               data: {
                 id: `link-${Date.now()}-${i}`,
                 platform,
-                url: url as string,
+                url: validateUrl(url),
                 sortOrder: platformOrder.indexOf(platform),
               },
             });
@@ -251,14 +267,14 @@ export async function POST(request: Request) {
 
       for (let ci = 0; ci < body.categories.length; ci++) {
         const cat = body.categories[ci];
-        const catId = cat.id || `cat-${Date.now()}-${ci}`;
+        const catId = validateString(cat.id, 100) || `cat-${Date.now()}-${ci}`;
 
         await prisma.category.create({
           data: {
             id: catId,
             key: catId,
-            nameEn: cat.name_en ?? "",
-            nameZh: cat.name_zh ?? "",
+            nameEn: validateString(cat.name_en),
+            nameZh: validateString(cat.name_zh),
             sortOrder: ci,
           },
         });
@@ -267,16 +283,16 @@ export async function POST(request: Request) {
           const p = cat.projects[pi];
           await prisma.project.create({
             data: {
-              id: p.id || `proj-${Date.now()}-${ci}-${pi}`,
+              id: validateString(p.id, 100) || `proj-${Date.now()}-${ci}-${pi}`,
               categoryId: catId,
-              titleEn: p.title_en ?? "",
-              titleZh: p.title_zh ?? "",
-              cover: p.cover ?? "",
-              imageFolder: p.imageFolder ?? p.id ?? "",
-              images: JSON.stringify(p.images ?? []),
-              contentZh: JSON.stringify(p.content_zh ?? []),
-              contentEn: JSON.stringify(p.content_en ?? []),
-              link: p.link ?? "",
+              titleEn: validateString(p.title_en),
+              titleZh: validateString(p.title_zh),
+              cover: validateUrl(p.cover),
+              imageFolder: validateString(p.imageFolder, 100) || validateString(p.id, 100),
+              images: JSON.stringify(Array.isArray(p.images) ? p.images : []),
+              contentZh: JSON.stringify(Array.isArray(p.content_zh) ? p.content_zh : []),
+              contentEn: JSON.stringify(Array.isArray(p.content_en) ? p.content_en : []),
+              link: validateUrl(p.link),
               sortOrder: pi,
             },
           });
