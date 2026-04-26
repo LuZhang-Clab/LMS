@@ -8,9 +8,6 @@ type Tab = "projects" | "about" | "work" | "services" | "site";
 
 
 export default function AdminPage() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [password, setPassword] = useState("");
-  const [loginError, setLoginError] = useState("");
   const [data, setData] = useState<AdminSiteData | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("projects");
   const [toast, setToast] = useState<{ message: string; type: "success" | "info" | "error" } | null>(null);
@@ -18,10 +15,8 @@ export default function AdminPage() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (isAuthenticated) {
-      fetchData();
-    }
-  }, [isAuthenticated]);
+    fetchData();
+  }, []);
 
   const fetchData = async () => {
     try {
@@ -40,31 +35,9 @@ export default function AdminPage() {
     setTimeout(() => setToast(null), 2500);
   };
 
-  const handleLogin = async () => {
-    setLoginError("");
-    try {
-      const res = await fetch("/api/admin", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
-      });
-      if (res.ok) {
-        setIsAuthenticated(true);
-        fetchData();
-      } else {
-        setLoginError("密码错误，请重试");
-        setPassword("");
-      }
-    } catch {
-      setLoginError("登录失败，请重试");
-    }
-  };
-
   const handleLogout = async () => {
-    setIsAuthenticated(false);
-    setData(null);
-    setPassword("");
     await fetch("/api/admin", { method: "DELETE" });
+    window.location.href = "/admin/login";
   };
 
   const saveData = async () => {
@@ -102,33 +75,6 @@ export default function AdminPage() {
     } catch {}
     return null;
   };
-
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-neutral-950 flex items-center justify-center font-sans">
-        <div className="bg-neutral-900 border border-neutral-800 rounded-lg p-10 w-full max-w-sm text-center">
-          <h1 className="text-amber-500/90 text-lg tracking-widest mb-2 font-light">LUMOS CREATIVE</h1>
-          <p className="text-neutral-500 text-sm mb-6">后台管理 · 请输入管理员密码</p>
-          <div className="text-red-500 text-sm mb-4 min-h-5">{loginError}</div>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => { setPassword(e.target.value); setLoginError(""); }}
-            onKeyDown={(e) => e.key === "Enter" && handleLogin()}
-            placeholder="管理员密码"
-            className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded text-neutral-200 text-center tracking-widest focus:outline-none focus:border-amber-500/50 mb-4"
-            autoFocus
-          />
-          <button
-            onClick={handleLogin}
-            className="w-full py-3 bg-amber-500/90 hover:bg-amber-500 text-black font-medium tracking-wider rounded transition-colors"
-          >
-            进入后台
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   if (!data) {
     return (
