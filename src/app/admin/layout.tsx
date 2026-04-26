@@ -1,22 +1,13 @@
-import { redirect } from "next/navigation";
-import { cookies } from "next/headers";
-import { hashPassword, getAdminPassword } from "@/lib/auth";
+import type { Metadata } from "next";
 
-async function checkAuth() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("admin_token")?.value;
-  if (!token) return false;
-  return token === hashPassword(getAdminPassword());
-}
+export const metadata: Metadata = {
+  title: "Admin - LUMOS CREATIVE",
+};
 
-export default async function AdminLayout({
+export default function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const isAuth = await checkAuth();
-  if (!isAuth) {
-    redirect("/admin/login");
-  }
   return <>{children}</>;
 }

@@ -1,26 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { DM_Serif_Display, Noto_Serif_SC, Noto_Sans_SC } from "next/font/google";
 import { LocaleProvider } from "@/context/LocaleProvider";
-
-const dmSerif = DM_Serif_Display({
-  weight: ["400"],
-  subsets: ["latin"],
-  variable: "--font-dm-serif",
-  display: "swap",
-});
-
-const notoSerif = Noto_Serif_SC({
-  subsets: ["latin"],
-  variable: "--font-noto-serif",
-  display: "swap",
-});
-
-const notoSans = Noto_Sans_SC({
-  subsets: ["latin"],
-  variable: "--font-noto-sans",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: "LUMOS CREATIVE",
@@ -36,10 +16,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="zh"
-      className={`${dmSerif.variable} ${notoSerif.variable} ${notoSans.variable}`}
-    >
+    <html lang="zh">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.cn" />
+        <link rel="preconnect" href="https://fonts.gstatic.cn" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.cn/css2?family=DM+Serif+Display:ital@0;1&family=Noto+Serif+SC:wght@400;700&family=Noto+Sans+SC:wght@300;400;500&display=swap"
+          rel="stylesheet"
+        />
+      </head>
       <body>
         <LocaleProvider>
           {/* Custom Cursor Canvas */}

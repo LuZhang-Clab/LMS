@@ -12,6 +12,11 @@
   --accent: #1a1a1a;
   --transition: 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   --transition-fast: 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+
+  /* Font families loaded via CDN (Google Fonts CN mirror) */
+  --font-noto-sans: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --font-noto-serif: "Noto Serif SC", "Songti SC", "SimSun", Georgia, serif;
+  --font-dm-serif: "DM Serif Display", Georgia, "Times New Roman", serif;
 }
 
 @theme inline {
