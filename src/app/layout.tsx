@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { DM_Serif_Display, Noto_Serif_SC, Noto_Sans_SC } from "next/font/google";
+import { LocaleProvider } from "@/context/LocaleContext";
 
 const dmSerif = DM_Serif_Display({
   weight: ["400"],
@@ -29,7 +30,7 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
@@ -39,7 +40,23 @@ export default async function RootLayout({
       lang="zh"
       className={`${dmSerif.variable} ${notoSerif.variable} ${notoSans.variable}`}
     >
-      <body>{children}</body>
+      <body>
+        <LocaleProvider>
+          {/* Custom Cursor Canvas */}
+          <canvas id="cursor-canvas"></canvas>
+
+          {/* Splash Screen */}
+          <div id="splash">
+            <canvas id="splash-canvas"></canvas>
+            <div className="splash-text-wrap">
+              <div className="splash-brand" id="splash-brand">LUMOS CREATIVE</div>
+              <div className="splash-sub" id="splash-sub">里面是·创意事务</div>
+            </div>
+          </div>
+
+          {children}
+        </LocaleProvider>
+      </body>
     </html>
   );
 }

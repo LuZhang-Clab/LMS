@@ -3,17 +3,17 @@ import { prisma } from "@/lib/db";
 import { parseContent } from "@/types";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { getServerLocale } from "@/context/LocaleContext";
 
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ locale: string; id: string }>;
+  params: Promise<{ id: string }>;
 }): Promise<Metadata> {
-  const { locale, id } = await params;
+  const { id } = await params;
   const project = await prisma.project.findUnique({ where: { id } });
   if (!project) return { title: "Not Found" };
-  const title = locale === "en" ? project.titleEn : project.titleZh;
-  return { title: `${title} — LUMOS` };
+  return { title: `${project.titleEn} — LUMOS` };
 }
 
 function resolveCoverUrl(cover: string | null, imageFolder: string | null): string {
@@ -29,9 +29,10 @@ function resolveCoverUrl(cover: string | null, imageFolder: string | null): stri
 export default async function ProjectDetailPage({
   params,
 }: {
-  params: Promise<{ locale: string; id: string }>;
+  params: Promise<{ id: string }>;
 }) {
-  const { locale, id } = await params;
+  const locale = await getServerLocale();
+  const { id } = await params;
 
   const project = await prisma.project.findUnique({
     where: { id },
@@ -57,7 +58,6 @@ export default async function ProjectDetailPage({
       imageFolder={project.imageFolder || ""}
       content={content}
       link={project.link}
-      locale={locale}
     />
   );
 }

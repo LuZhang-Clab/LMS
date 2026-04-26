@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import Link from "next/link";
 import Nav from "@/components/Nav";
 import type { ContentBlock } from "@/types";
+import { useLocale } from "@/context/LocaleContext";
 
 function resolveImage(src: string, folder: string): string {
   if (src.startsWith("http")) return src;
@@ -22,7 +23,6 @@ interface ProjectDetailClientProps {
   imageFolder: string;
   content: ContentBlock[];
   link: string | null;
-  locale: string;
 }
 
 export default function ProjectDetailClient({
@@ -36,19 +36,13 @@ export default function ProjectDetailClient({
   imageFolder,
   content,
   link,
-  locale,
 }: ProjectDetailClientProps) {
+  const { locale } = useLocale();
   const isEn = locale === "en";
   const displayTitle = isEn ? titleEn : titleZh;
   const displayCategory = isEn ? categoryNameEn : categoryName;
 
   useEffect(() => {
-    // Update nav language buttons active state
-    const langEn = document.getElementById("lang-en");
-    const langZh = document.getElementById("lang-zh");
-    if (langEn) langEn.classList.toggle("active", locale === "en");
-    if (langZh) langZh.classList.toggle("active", locale === "zh");
-
     // Update header brand text
     const brand = document.getElementById("nav-brand");
     if (brand) {
@@ -64,7 +58,7 @@ export default function ProjectDetailClient({
 
   return (
     <>
-      <Nav locale={locale} />
+      <Nav />
 
       <div className="page-main">
         {/* Back link */}

@@ -1,11 +1,10 @@
-import createMiddleware from "next-intl/middleware";
-import { SUPPORTED_LOCALES, DEFAULT_LOCALE } from "@/lib/i18n";
+import { NextRequest, NextResponse } from "next/server";
 
-export default createMiddleware({
-  locales: SUPPORTED_LOCALES,
-  defaultLocale: DEFAULT_LOCALE,
-  localePrefix: "as-needed",
-});
+// All locale switching is now cookie-based via LocaleContext.
+// Middleware passes all requests through — no URL-based locale routing.
+export function middleware(_req: NextRequest) {
+  return NextResponse.next();
+}
 
 export const config = {
   matcher: [

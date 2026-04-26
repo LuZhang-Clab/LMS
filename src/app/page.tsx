@@ -2,25 +2,20 @@ import Nav from "@/components/Nav";
 import HomeClient from "@/components/HomeClient";
 import { prisma } from "@/lib/db";
 import { parseContent } from "@/types";
+import { getServerLocale } from "@/context/LocaleContext";
 
-export default async function HomePage({
-  params,
-}: {
-  params: Promise<{ locale: string }>;
-}) {
-  const { locale } = await params;
+export default async function HomePage() {
+  const locale = await getServerLocale();
 
   const [about, categories] = await Promise.all([
     prisma.about.findFirst(),
     prisma.category.findMany({
       orderBy: { sortOrder: "asc" },
-      include: {
-        projects: { orderBy: { sortOrder: "asc" } },
-      },
+      include: { projects: { orderBy: { sortOrder: "asc" } } },
     }),
   ]);
 
-  const formatted: import("@/types").Category[] = categories.map((c) => ({
+  const formatted = categories.map((c) => ({
     id: c.id,
     key: c.key,
     nameEn: c.nameEn,
@@ -57,6 +52,9 @@ export default async function HomePage({
       };
 
   return (
-    <HomeClient categories={formatted} about={aboutData} locale={locale} />
+    <>
+      <Nav />
+      <HomeClient categories={formatted} about={aboutData} />
+    </>
   );
 }

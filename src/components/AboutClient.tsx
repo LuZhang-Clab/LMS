@@ -6,6 +6,7 @@ import Nav from "@/components/Nav";
 import type { WorkExperience, Service } from "@/types";
 import type { SiteLink } from "@/types";
 import type { ContentBlock } from "@/types";
+import { useLocale } from "@/context/LocaleContext";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -57,13 +58,12 @@ function ContactIcon({ platform }: { platform: string }) {
 
 function WorkExpModal({
   exp,
-  locale,
   onClose,
 }: {
   exp: WorkExperience | null;
-  locale: string;
   onClose: () => void;
 }) {
+  const { locale } = useLocale();
   if (!exp) return null;
   const isEn = locale === "en";
   const blocks: ContentBlock[] = isEn
@@ -158,7 +158,6 @@ interface AboutClientProps {
   workExperience: WorkExperience[];
   services: Service[];
   links: SiteLink[];
-  locale: string;
 }
 
 export default function AboutClient({
@@ -166,20 +165,14 @@ export default function AboutClient({
   workExperience,
   services,
   links,
-  locale,
 }: AboutClientProps) {
+  const { locale } = useLocale();
   const isEn = locale === "en";
   const [openSections, setOpenSections] = useState<Set<string>>(new Set(["work", "services"]));
   const [activeExp, setActiveExp] = useState<WorkExperience | null>(null);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
   useEffect(() => {
-    // Update nav language buttons active state
-    const langEn = document.getElementById("lang-en");
-    const langZh = document.getElementById("lang-zh");
-    if (langEn) langEn.classList.toggle("active", locale === "en");
-    if (langZh) langZh.classList.toggle("active", locale === "zh");
-
     // Update header brand text
     const brand = document.getElementById("nav-brand");
     if (brand) {
@@ -225,7 +218,7 @@ export default function AboutClient({
 
   return (
     <>
-      <Nav locale={locale} />
+      <Nav />
 
       <div className="page-main" id="page-about">
         {/* About Hero */}
@@ -359,7 +352,7 @@ export default function AboutClient({
       </footer>
 
       {/* Work Exp Modal */}
-      <WorkExpModal exp={activeExp} locale={locale} onClose={() => setActiveExp(null)} />
+      <WorkExpModal exp={activeExp} onClose={() => setActiveExp(null)} />
 
       {/* Lightbox */}
       {lightboxSrc && (

@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import Nav from "@/components/Nav";
 import type { Category, ContentBlock } from "@/types";
+import { useLocale } from "@/context/LocaleContext";
 
 // ─── Splash Screen ───────────────────────────────────────────────────────────
 
@@ -326,12 +327,11 @@ interface ModalState {
 function ProjectModal({
   modal,
   onClose,
-  locale,
 }: {
   modal: ModalState;
   onClose: () => void;
-  locale: string;
 }) {
+  const { locale } = useLocale();
   const isEn = locale === "en";
 
   return (
@@ -391,10 +391,10 @@ interface HomeClientProps {
     titleZh: string;
     photo: string;
   };
-  locale: string;
 }
 
-export default function HomeClient({ categories, about, locale }: HomeClientProps) {
+export default function HomeClient({ categories, about }: HomeClientProps) {
+  const { locale } = useLocale();
   const isEn = locale === "en";
   const [openCategories, setOpenCategories] = useState<Set<string>>(
     new Set(categories.map((c) => c.id))
@@ -416,16 +416,9 @@ export default function HomeClient({ categories, about, locale }: HomeClientProp
     const brand = document.getElementById("nav-brand");
     if (brand) {
       brand.addEventListener("click", () => {
-        // Navigate to root of current locale
-        window.location.href = `/${locale}`;
+        window.location.href = "/";
       });
     }
-
-    // Update nav language buttons active state
-    const langEn = document.getElementById("lang-en");
-    const langZh = document.getElementById("lang-zh");
-    if (langEn) langEn.classList.toggle("active", locale === "en");
-    if (langZh) langZh.classList.toggle("active", locale === "zh");
 
     // Keyboard: Escape closes modal/lightbox
     const onKey = (e: KeyboardEvent) => {
@@ -521,7 +514,7 @@ export default function HomeClient({ categories, about, locale }: HomeClientProp
 
   return (
     <>
-      <Nav locale={locale} />
+      <Nav />
 
       {/* Home Page */}
       <div className="page-main active" id="page-home">
@@ -611,7 +604,7 @@ export default function HomeClient({ categories, about, locale }: HomeClientProp
       </footer>
 
       {/* Modal */}
-      <ProjectModal modal={modal} onClose={closeModal} locale={locale} />
+      <ProjectModal modal={modal} onClose={closeModal} />
 
       {/* Lightbox */}
       <Lightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />

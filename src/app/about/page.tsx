@@ -2,22 +2,14 @@ import AboutClient from "@/components/AboutClient";
 import Nav from "@/components/Nav";
 import { prisma } from "@/lib/db";
 import type { Metadata } from "next";
+import { getServerLocale } from "@/context/LocaleContext";
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ locale: string }>;
-}): Promise<Metadata> {
-  const { locale } = await params;
-  return { title: locale === "en" ? "About — LUMOS" : "关于 — LUMOS" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: "About — LUMOS" };
 }
 
-export default async function AboutPage({
-  params,
-}: {
-  params: Promise<{ locale: string }>;
-}) {
-  const { locale } = await params;
+export default async function AboutPage() {
+  const locale = await getServerLocale();
 
   const [about, workExperience, services, links] = await Promise.all([
     prisma.about.findFirst(),
@@ -59,12 +51,14 @@ export default async function AboutPage({
       };
 
   return (
-    <AboutClient
-      about={aboutData}
-      workExperience={workExperience}
-      services={services}
-      links={links}
-      locale={locale}
-    />
+    <>
+      <Nav />
+      <AboutClient
+        about={aboutData}
+        workExperience={workExperience}
+        services={services}
+        links={links}
+      />
+    </>
   );
 }
