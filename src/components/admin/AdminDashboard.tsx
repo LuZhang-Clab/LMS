@@ -204,7 +204,7 @@ function getProjectImages(
   for (const block of proj.content_zh) {
     if (block.type === "images" && block.files) {
       for (const f of block.files) {
-        const url = `/images/projects/${proj.image_folder || "default"}/${f}`;
+        const url = `/images/projects/${proj.imageFolder || "default"}/${f}`;
         if (!urls.includes(url)) urls.push(url);
       }
     }
@@ -717,7 +717,7 @@ function ProjectsTab({ data, updateData }: { data: SiteData; updateData: (path: 
                 <ImageUploader
                   images={proj.images || []}
                   cover={proj.cover}
-                  imageFolder={proj.image_folder}
+                  imageFolder={proj.imageFolder}
                   onImagesChange={(images) => updateProject(ci, pi, "images", images)}
                   onCoverChange={(cover) => updateProject(ci, pi, "cover", cover)}
                 />
