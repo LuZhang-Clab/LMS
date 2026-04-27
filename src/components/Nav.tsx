@@ -19,7 +19,7 @@ export default function Nav() {
     <>
       <header className="site-header" id="site-header">
         <Link href="/" className="header-brand" id="nav-brand">
-          LUMOS CREATIVE
+          {isEn ? "LUMOS CREATIVE" : "里面是·创意事务"}
         </Link>
 
         <nav className="nav-center">

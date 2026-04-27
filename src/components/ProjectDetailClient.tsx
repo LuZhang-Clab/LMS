@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import Nav from "@/components/Nav";
 import type { ContentBlock } from "@/types";
@@ -10,6 +10,16 @@ function resolveImage(src: string, folder: string): string {
   if (src.startsWith("http")) return src;
   if (src.startsWith("/")) return src;
   return `/images/projects/${folder || "default"}/${src}`;
+}
+
+function Lightbox({ src, onClose }: { src: string | null; onClose: () => void }) {
+  if (!src) return null;
+  return (
+    <div className="lightbox active" onClick={onClose}>
+      <button className="lightbox-close" onClick={onClose}>×</button>
+      <img src={src} alt="" />
+    </div>
+  );
 }
 
 interface ProjectDetailClientProps {
@@ -26,12 +36,10 @@ interface ProjectDetailClientProps {
 }
 
 export default function ProjectDetailClient({
-  title,
   titleEn,
   titleZh,
   categoryName,
   categoryNameEn,
-  cover,
   coverUrl,
   imageFolder,
   content,
@@ -41,20 +49,7 @@ export default function ProjectDetailClient({
   const isEn = locale === "en";
   const displayTitle = isEn ? titleEn : titleZh;
   const displayCategory = isEn ? categoryNameEn : categoryName;
-
-  useEffect(() => {
-    // Update header brand text
-    const brand = document.getElementById("nav-brand");
-    if (brand) {
-      if (locale === "zh") {
-        brand.textContent = "里面是·创意事务";
-        brand.style.fontFamily = "var(--font-noto-serif), 'Noto Serif SC', serif";
-      } else {
-        brand.textContent = "LUMOS CREATIVE";
-        brand.style.fontFamily = "var(--font-dm-serif), Georgia, serif";
-      }
-    }
-  }, [locale]);
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
   return (
     <>
@@ -78,6 +73,8 @@ export default function ProjectDetailClient({
               className="project-detail-cover"
               src={coverUrl}
               alt={displayTitle}
+              onClick={() => setLightboxSrc(coverUrl)}
+              style={{ cursor: "zoom-in" }}
               onError={(e) => {
                 (e.target as HTMLImageElement).style.display = "none";
               }}
@@ -94,17 +91,22 @@ export default function ProjectDetailClient({
                 case "images":
                   return (
                     <div key={i} className="project-detail-images">
-                      {block.files.map((file, j) => (
-                        <img
-                          key={j}
-                          src={resolveImage(file, imageFolder)}
-                          alt={`${displayTitle}-${j}`}
-                          loading="lazy"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).style.display = "none";
-                          }}
-                        />
-                      ))}
+                      {block.files.map((file, j) => {
+                        const src = resolveImage(file, imageFolder);
+                        return (
+                          <img
+                            key={j}
+                            src={src}
+                            alt={`${displayTitle}-${j}`}
+                            loading="lazy"
+                            onClick={() => setLightboxSrc(src)}
+                            style={{ cursor: "zoom-in" }}
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display = "none";
+                            }}
+                          />
+                        );
+                      })}
                     </div>
                   );
                 case "link":
@@ -131,19 +133,8 @@ export default function ProjectDetailClient({
         </div>
       </div>
 
-      {/* Footer */}
-      <footer className="site-footer">
-        <p
-          style={{
-            fontFamily: "var(--font-noto-sans), 'Noto Sans SC', sans-serif",
-            fontSize: "0.72rem",
-            color: "var(--text-muted)",
-            letterSpacing: "0.04em",
-          }}
-        >
-          © {new Date().getFullYear()} LUMOS CREATIVE
-        </p>
-      </footer>
+      {/* Lightbox */}
+      <Lightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />
     </>
   );
 }

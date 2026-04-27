@@ -244,7 +244,11 @@ function PhotoUploader({
 
       if (response.ok) {
         const result = await response.json();
-        onPhotoChange(result.url);
+        if (result.url) {
+          onPhotoChange(result.url);
+        } else {
+          alert("上传失败：服务器未返回有效路径");
+        }
       } else {
         alert("上传失败");
       }
@@ -331,7 +335,8 @@ function ImageUploader({
 
     setIsUploading(true);
     setUploadProgress(`上传中... (0/${files.length})`);
-    const newImages = [...images];
+    const newImages: string[] = [...images];
+    let firstUploadedUrl = "";
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
@@ -351,15 +356,19 @@ function ImageUploader({
 
         if (response.ok) {
           const result = await response.json();
-          newImages.push(result.url);
-
-          if (images.length === 0 && i === 0) {
-            onCoverChange(result.url);
+          if (result.url) {
+            newImages.push(result.url);
+            if (!firstUploadedUrl) firstUploadedUrl = result.url;
           }
         }
       } catch (e) {
         console.error("Upload failed:", e);
       }
+    }
+
+    // If cover was empty and we uploaded something, auto-set first upload as cover
+    if (!cover && firstUploadedUrl) {
+      onCoverChange(firstUploadedUrl);
     }
 
     onImagesChange(newImages);

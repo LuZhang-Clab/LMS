@@ -59,9 +59,11 @@ function ContactIcon({ platform }: { platform: string }) {
 function WorkExpModal({
   exp,
   onClose,
+  onImageClick,
 }: {
   exp: WorkExperience | null;
   onClose: () => void;
+  onImageClick: (src: string) => void;
 }) {
   const { locale } = useLocale();
   if (!exp) return null;
@@ -108,6 +110,7 @@ function WorkExpModal({
                       src={resolveImage(file, exp.detailFolder || "")}
                       alt=""
                       loading="lazy"
+                      onClick={() => onImageClick(resolveImage(file, exp.detailFolder || ""))}
                       onError={(e) => {
                         (e.target as HTMLImageElement).style.display = "none";
                       }}
@@ -173,18 +176,6 @@ export default function AboutClient({
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
   useEffect(() => {
-    // Update header brand text
-    const brand = document.getElementById("nav-brand");
-    if (brand) {
-      if (locale === "zh") {
-        brand.textContent = "里面是·创意事务";
-        brand.style.fontFamily = "var(--font-noto-serif), 'Noto Serif SC', serif";
-      } else {
-        brand.textContent = "LUMOS CREATIVE";
-        brand.style.fontFamily = "var(--font-dm-serif), Georgia, serif";
-      }
-    }
-
     // Keyboard
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -194,7 +185,7 @@ export default function AboutClient({
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [locale, lightboxSrc, activeExp]);
+  }, [lightboxSrc, activeExp]);
 
   const toggleSection = (id: string) => {
     setOpenSections((prev) => {
@@ -227,6 +218,7 @@ export default function AboutClient({
             className="about-photo"
             src={photoSrc}
             alt={about.nameEn}
+            onClick={() => setLightboxSrc(photoSrc)}
             onError={(e) => {
               (e.target as HTMLImageElement).style.display = "none";
             }}
@@ -271,6 +263,10 @@ export default function AboutClient({
                         src={cover}
                         alt={isEn ? exp.titleEn : exp.titleZh}
                         loading="lazy"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setLightboxSrc(cover);
+                        }}
                         onError={(e) => {
                           (e.target as HTMLImageElement).style.display = "none";
                         }}
@@ -344,15 +340,8 @@ export default function AboutClient({
         </div>
       </div>
 
-      {/* Footer */}
-      <footer className="site-footer">
-        <p style={{ fontFamily: "var(--font-noto-sans)", fontSize: "0.72rem", color: "var(--text-muted)", letterSpacing: "0.04em" }}>
-          © {new Date().getFullYear()} LUMOS CREATIVE
-        </p>
-      </footer>
-
       {/* Work Exp Modal */}
-      <WorkExpModal exp={activeExp} onClose={() => setActiveExp(null)} />
+      <WorkExpModal exp={activeExp} onClose={() => setActiveExp(null)} onImageClick={(src) => setLightboxSrc(src)} />
 
       {/* Lightbox */}
       {lightboxSrc && (

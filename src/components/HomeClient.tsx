@@ -412,14 +412,6 @@ export default function HomeClient({ categories, about }: HomeClientProps) {
     initSplash();
     initCursor();
 
-    // Handle locale switch on brand click
-    const brand = document.getElementById("nav-brand");
-    if (brand) {
-      brand.addEventListener("click", () => {
-        window.location.href = "/";
-      });
-    }
-
     // Keyboard: Escape closes modal/lightbox
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -435,7 +427,7 @@ export default function HomeClient({ categories, about }: HomeClientProps) {
     return () => {
       document.removeEventListener("keydown", onKey);
     };
-  }, [locale, lightboxSrc, modal.visible]);
+  }, [lightboxSrc, modal.visible]);
 
   // Update lang button active state when locale changes
   useEffect(() => {
@@ -443,20 +435,6 @@ export default function HomeClient({ categories, about }: HomeClientProps) {
     const langZh = document.getElementById("lang-zh");
     if (langEn) langEn.classList.toggle("active", locale === "en");
     if (langZh) langZh.classList.toggle("active", locale === "zh");
-  }, [locale]);
-
-  // Update header brand text
-  useEffect(() => {
-    const brand = document.getElementById("nav-brand");
-    if (brand) {
-      if (locale === "zh") {
-        brand.textContent = "里面是·创意事务";
-        brand.style.fontFamily = "var(--font-noto-serif), 'Noto Serif SC', serif";
-      } else {
-        brand.textContent = "LUMOS CREATIVE";
-        brand.style.fontFamily = "var(--font-dm-serif), Georgia, serif";
-      }
-    }
   }, [locale]);
 
   const toggleCategory = (id: string) => {
@@ -514,13 +492,22 @@ export default function HomeClient({ categories, about }: HomeClientProps) {
 
   return (
     <>
+      {/* Splash Screen */}
+      <div id="splash">
+        <canvas id="splash-canvas" />
+        <div className="splash-text-wrap">
+          <div className="splash-brand">LUMOS CREATIVE</div>
+          <div className="splash-sub">里面是·创意事务</div>
+        </div>
+      </div>
+
       <Nav />
 
       {/* Home Page */}
       <div className="page-main active" id="page-home">
         {/* Hero */}
         <div className="home-hero">
-          <h1 onClick={() => (window.location.href = `/${locale}/about`)}>{name}</h1>
+          <h1 onClick={() => (window.location.href = "/about")}>{name}</h1>
           <p>{title}</p>
         </div>
 
@@ -588,20 +575,6 @@ export default function HomeClient({ categories, about }: HomeClientProps) {
           })}
         </div>
       </div>
-
-      {/* Footer */}
-      <footer className="site-footer">
-        <p
-          style={{
-            fontFamily: "var(--font-noto-sans), 'Noto Sans SC', sans-serif",
-            fontSize: "0.72rem",
-            color: "var(--text-muted)",
-            letterSpacing: "0.04em",
-          }}
-        >
-          © {new Date().getFullYear()} LUMOS CREATIVE
-        </p>
-      </footer>
 
       {/* Modal */}
       <ProjectModal modal={modal} onClose={closeModal} />
