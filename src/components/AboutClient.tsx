@@ -7,6 +7,7 @@ import type { WorkExperience, Service } from "@/types";
 import type { SiteLink } from "@/types";
 import type { ContentBlock } from "@/types";
 import { useLocale } from "@/context/LocaleProvider";
+import { initCursor } from "@/lib/cursor";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -56,6 +57,12 @@ function ContactIcon({ platform }: { platform: string }) {
 
 // ─── Work Exp Modal ───────────────────────────────────────────────────────────
 
+function resolveWorkImage(src: string, detailFolder: string, id: string): string {
+  if (src.startsWith("http")) return src;
+  if (src.startsWith("/")) return src;
+  return `/images/work/${detailFolder || id}/${src}`;
+}
+
 function WorkExpModal({
   exp,
   onClose,
@@ -72,6 +79,8 @@ function WorkExpModal({
     ? (exp.contentEn as ContentBlock[])
     : (exp.contentZh as ContentBlock[]);
 
+  const expImages: string[] = Array.isArray(exp.images) ? exp.images : [];
+
   return (
     <div
       className="modal-overlay visible active"
@@ -87,6 +96,22 @@ function WorkExpModal({
         <p className="modal-text" style={{ marginBottom: "1.5rem", color: "var(--text-muted)" }}>
           {exp.period}
         </p>
+        {expImages.length > 0 && (
+          <div className="modal-images">
+            {expImages.map((img, i) => (
+              <img
+                key={i}
+                src={resolveWorkImage(img, exp.detailFolder || "", exp.id)}
+                alt=""
+                loading="lazy"
+                onClick={() => onImageClick(resolveWorkImage(img, exp.detailFolder || "", exp.id))}
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = "none";
+                }}
+              />
+            ))}
+          </div>
+        )}
         {blocks.map((block, i) => {
           switch (block.type) {
             case "heading":
@@ -176,6 +201,8 @@ export default function AboutClient({
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
   useEffect(() => {
+    initCursor();
+
     // Keyboard
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -250,8 +277,12 @@ export default function AboutClient({
           <div className={`section-content${openSections.has("work") ? " open" : ""}`}>
             <div className="work-exp-scroll">
               {workExperience.map((exp, idx) => {
-                // Work exp images are 1.jpg-4.jpg based on index
-                const cover = `/images/about/${idx + 1}.jpg`;
+                // Use uploaded cover image, fallback to index-based default
+                const cover = exp.cover
+                  ? exp.cover.startsWith("http") || exp.cover.startsWith("/")
+                    ? exp.cover
+                    : `/images/work/${exp.detailFolder || exp.id}/${exp.cover}`
+                  : `/images/about/${idx + 1}.jpg`;
                 return (
                   <div
                     key={exp.id}
@@ -268,7 +299,8 @@ export default function AboutClient({
                           setLightboxSrc(cover);
                         }}
                         onError={(e) => {
-                          (e.target as HTMLImageElement).style.display = "none";
+                          (e.target as HTMLImageElement).src = `/images/about/${idx + 1}.jpg`;
+                          (e.target as HTMLImageElement).onerror = null;
                         }}
                       />
                     </div>

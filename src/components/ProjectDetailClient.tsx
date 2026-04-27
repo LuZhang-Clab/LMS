@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Nav from "@/components/Nav";
 import type { ContentBlock } from "@/types";
 import { useLocale } from "@/context/LocaleProvider";
+import { initCursor } from "@/lib/cursor";
 
 function resolveImage(src: string, folder: string): string {
   if (src.startsWith("http")) return src;
@@ -50,6 +51,10 @@ export default function ProjectDetailClient({
   const displayTitle = isEn ? titleEn : titleZh;
   const displayCategory = isEn ? categoryNameEn : categoryName;
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+
+  useEffect(() => {
+    initCursor();
+  }, []);
 
   return (
     <>
