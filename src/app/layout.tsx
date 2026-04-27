@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { LocaleProvider } from "@/context/LocaleProvider";
+import CursorProvider from "@/components/CursorProvider";
 
 export const metadata: Metadata = {
   title: "LUMOS CREATIVE",
@@ -39,6 +40,7 @@ export default function RootLayout({
           }}
         />
         <LocaleProvider>
+          <CursorProvider />
           {children}
         </LocaleProvider>
       </body>

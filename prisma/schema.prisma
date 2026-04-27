@@ -41,6 +41,8 @@ model WorkExperience {
   titleZh     String @map("title_zh")
   period      String
   detailFolder String @map("detail_folder")
+  images      String @default("[]") @map("images") // JSON serialized array of image URLs
+  cover       String @default("") @map("cover") // cover image URL
   contentZh   String @map("content_zh") // JSON serialized array
   contentEn   String @map("content_en") // JSON serialized array
   sortOrder   Int    @default(0) @map("sort_order")

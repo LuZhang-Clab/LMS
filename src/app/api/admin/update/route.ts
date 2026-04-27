@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
+import { clearDataCache } from "@/lib/cache";
 
 const ABOUT_FIELDS = [
   "name_en", "name_zh",
@@ -16,9 +17,13 @@ function validateString(value: unknown, maxLen = 1000): string {
 
 function validateUrl(value: unknown): string {
   if (typeof value !== "string") return "";
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  // Accept absolute URLs or relative paths starting with /
+  if (trimmed.startsWith("/")) return trimmed.slice(0, 2000);
   try {
-    new URL(value);
-    return value.slice(0, 2000);
+    new URL(trimmed);
+    return trimmed.slice(0, 2000);
   } catch {
     return "";
   }
@@ -32,6 +37,12 @@ function validateSortOrder(value: unknown): number {
 function validateJsonArray(value: unknown): string {
   if (Array.isArray(value)) return JSON.stringify(value);
   return "[]";
+}
+
+// For Tiptap HTML output — accepts any string, truncates to maxLen
+function validateHtmlContent(value: unknown, maxLen = 100000): string {
+  if (typeof value !== "string") return "";
+  return value.slice(0, maxLen);
 }
 
 export async function PUT(req: NextRequest) {
@@ -58,6 +69,7 @@ export async function PUT(req: NextRequest) {
         update: { titleEn, titleZh, subtitleEn, subtitleZh },
         create: { id: "site", titleEn, titleZh, subtitleEn, subtitleZh },
       });
+      clearDataCache();
       return NextResponse.json(result);
     }
 
@@ -97,6 +109,7 @@ export async function PUT(req: NextRequest) {
         update: { nameEn, nameZh, sortOrder },
         create: { id: id || String(Date.now()), key: id || String(Date.now()), nameEn, nameZh, sortOrder },
       });
+      clearDataCache();
       return NextResponse.json(result);
     }
 
@@ -112,6 +125,7 @@ export async function PUT(req: NextRequest) {
         update: { titleEn, titleZh, descEn, descZh, sortOrder },
         create: { id, titleEn, titleZh, descEn, descZh, sortOrder },
       });
+      clearDataCache();
       return NextResponse.json(result);
     }
 
@@ -151,14 +165,15 @@ export async function PUT(req: NextRequest) {
       const link = validateUrl(data.link);
       const sortOrder = validateSortOrder(data.sortOrder ?? data.sort_order);
       const images = validateJsonArray(data.images);
-      const contentZh = validateJsonArray(data.contentZh);
-      const contentEn = validateJsonArray(data.contentEn);
+      const contentZh = validateHtmlContent(data.contentZh ?? data.content_zh);
+      const contentEn = validateHtmlContent(data.contentEn ?? data.content_en);
 
       const result = await prisma.project.upsert({
         where: { id },
         update: { categoryId, titleEn, titleZh, cover, imageFolder, link, sortOrder, images, contentZh, contentEn },
         create: { id, categoryId, titleEn, titleZh, cover, imageFolder, link, sortOrder, images, contentZh, contentEn },
       });
+      clearDataCache();
       return NextResponse.json(result);
     }
 
@@ -169,13 +184,14 @@ export async function PUT(req: NextRequest) {
       const period = validateString(data.period, 100);
       const detailFolder = validateString(data.detailFolder ?? data.detail_folder, 100) || id;
       const sortOrder = validateSortOrder(data.sortOrder ?? data.sort_order);
-      const contentZh = validateJsonArray(data.contentZh);
-      const contentEn = validateJsonArray(data.contentEn);
+      const contentZh = validateHtmlContent(data.contentZh);
+      const contentEn = validateHtmlContent(data.contentEn);
       const result = await prisma.workExperience.upsert({
         where: { id },
         update: { titleEn, titleZh, period, detailFolder, sortOrder, contentZh, contentEn },
         create: { id, titleEn, titleZh, period, detailFolder, sortOrder, contentZh, contentEn },
       });
+      clearDataCache();
       return NextResponse.json(result);
     }
 
@@ -200,18 +216,23 @@ export async function DELETE(req: NextRequest) {
   switch (type) {
     case "category":
       await prisma.category.delete({ where: { id } });
+      clearDataCache();
       return NextResponse.json({ success: true });
     case "service":
       await prisma.service.delete({ where: { id } });
+      clearDataCache();
       return NextResponse.json({ success: true });
     case "link":
       await prisma.link.delete({ where: { id } });
+      clearDataCache();
       return NextResponse.json({ success: true });
     case "project":
       await prisma.project.delete({ where: { id } });
+      clearDataCache();
       return NextResponse.json({ success: true });
     case "work":
       await prisma.workExperience.delete({ where: { id } });
+      clearDataCache();
       return NextResponse.json({ success: true });
     default:
       return NextResponse.json({ error: `Unknown type: ${type}` }, { status: 400 });

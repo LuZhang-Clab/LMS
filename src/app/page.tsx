@@ -1,7 +1,6 @@
 import Nav from "@/components/Nav";
 import HomeClient from "@/components/HomeClient";
 import { prisma } from "@/lib/db";
-import { parseContent } from "@/types";
 import { getServerLocale } from "@/context/LocaleContext";
 
 export default async function HomePage() {
@@ -28,8 +27,8 @@ export default async function HomePage() {
       cover: p.cover,
       imageFolder: p.imageFolder,
       images: p.images,
-      contentZh: parseContent(p.contentZh),
-      contentEn: parseContent(p.contentEn),
+      contentZh: p.contentZh ?? "",
+      contentEn: p.contentEn ?? "",
       link: p.link,
       sortOrder: p.sortOrder,
     })),

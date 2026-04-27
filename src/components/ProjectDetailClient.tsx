@@ -1,15 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Nav from "@/components/Nav";
-import type { ContentBlock } from "@/types";
 import { useLocale } from "@/context/LocaleProvider";
-import { initCursor } from "@/lib/cursor";
 
 function resolveImage(src: string, folder: string): string {
-  if (src.startsWith("http")) return src;
+  if (!src) return "";
+  // Already a full URL — return as-is
+  if (src.startsWith("http://") || src.startsWith("https://")) return src;
+  // Absolute path — return as-is
   if (src.startsWith("/")) return src;
+  // Relative path (e.g. "file.jpg") — prepend the project folder
   return `/images/projects/${folder || "default"}/${src}`;
 }
 
@@ -32,7 +34,7 @@ interface ProjectDetailClientProps {
   cover: string;
   coverUrl: string;
   imageFolder: string;
-  content: ContentBlock[];
+  contentHtml: string;
   link: string | null;
 }
 
@@ -43,7 +45,7 @@ export default function ProjectDetailClient({
   categoryNameEn,
   coverUrl,
   imageFolder,
-  content,
+  contentHtml,
   link,
 }: ProjectDetailClientProps) {
   const { locale } = useLocale();
@@ -51,10 +53,17 @@ export default function ProjectDetailClient({
   const displayTitle = isEn ? titleEn : titleZh;
   const displayCategory = isEn ? categoryNameEn : categoryName;
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
 
+  // Fix image src paths after HTML is rendered.
   useEffect(() => {
-    initCursor();
-  }, []);
+    const el = contentRef.current;
+    if (!el) return;
+    el.querySelectorAll<HTMLImageElement>("img").forEach((img) => {
+      const raw = img.getAttribute("src") ?? img.src;
+      img.src = resolveImage(raw, imageFolder);
+    });
+  }, [contentHtml, imageFolder]);
 
   return (
     <>
@@ -87,45 +96,13 @@ export default function ProjectDetailClient({
           )}
 
           <div className="project-detail-body">
-            {content.map((block, i) => {
-              switch (block.type) {
-                case "heading":
-                  return <h2 key={i}>{block.text}</h2>;
-                case "text":
-                  return <p key={i}>{block.text}</p>;
-                case "images":
-                  return (
-                    <div key={i} className="project-detail-images">
-                      {block.files.map((file, j) => {
-                        const src = resolveImage(file, imageFolder);
-                        return (
-                          <img
-                            key={j}
-                            src={src}
-                            alt={`${displayTitle}-${j}`}
-                            loading="lazy"
-                            onClick={() => setLightboxSrc(src)}
-                            style={{ cursor: "zoom-in" }}
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).style.display = "none";
-                            }}
-                          />
-                        );
-                      })}
-                    </div>
-                  );
-                case "link":
-                  return (
-                    <div key={i} className="project-detail-link">
-                      <a href={block.url} target="_blank" rel="noopener noreferrer">
-                        {block.text} ↗
-                      </a>
-                    </div>
-                  );
-                default:
-                  return null;
-              }
-            })}
+            {contentHtml ? (
+              <div
+                ref={contentRef}
+                className="project-detail-html"
+                dangerouslySetInnerHTML={{ __html: contentHtml }}
+              />
+            ) : null}
 
             {link && link !== "#" && (
               <div className="project-detail-link">

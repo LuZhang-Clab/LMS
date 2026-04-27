@@ -1,9 +1,10 @@
 import ProjectDetailClient from "@/components/ProjectDetailClient";
 import { prisma } from "@/lib/db";
-import { parseContent } from "@/types";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getServerLocale } from "@/context/LocaleContext";
+
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
   params,
@@ -18,7 +19,7 @@ export async function generateMetadata({
 
 function resolveCoverUrl(cover: string | null, imageFolder: string | null): string {
   if (cover) {
-    if (cover.startsWith("http")) return cover;
+    if (cover.startsWith("http://") || cover.startsWith("https://")) return cover;
     if (cover.startsWith("/")) return cover;
     return `/images/projects/${imageFolder || "default"}/${cover}`;
   }
@@ -39,11 +40,11 @@ export default async function ProjectDetailPage({
     include: { category: true },
   });
 
+  console.log("[DetailPage] project from Prisma:", project ? { id: project.id, contentZhLen: project.contentZh?.length, contentEnLen: project.contentEn?.length } : "NOT FOUND");
+
   if (!project) notFound();
 
-  const content = parseContent(
-    locale === "en" ? project.contentEn : project.contentZh
-  );
+  const contentRaw = locale === "en" ? project.contentEn : project.contentZh;
   const coverUrl = resolveCoverUrl(project.cover, project.imageFolder);
 
   return (
@@ -56,7 +57,7 @@ export default async function ProjectDetailPage({
       cover={project.cover || ""}
       coverUrl={coverUrl}
       imageFolder={project.imageFolder || ""}
-      content={content}
+      contentHtml={contentRaw}
       link={project.link}
     />
   );

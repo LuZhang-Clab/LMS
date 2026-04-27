@@ -12,6 +12,10 @@ export default function AdminPage() {
     document.body.style.background = "#111";
     document.body.style.margin = "0";
 
+    // Disable global cursor effects on admin pages
+    const cursorCanvas = document.getElementById("cursor-canvas") as HTMLCanvasElement | null;
+    if (cursorCanvas) cursorCanvas.style.display = "none";
+
     const loggedIn = sessionStorage.getItem("adminLoggedIn");
     if (loggedIn === "true") {
       setIsLoggedIn(true);

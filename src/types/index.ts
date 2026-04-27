@@ -37,6 +37,7 @@ export interface AdminWorkExperience {
   id?: string;
   title_en: string; title_zh: string;
   period: string; detail_folder: string;
+  images: string[]; cover: string;
   content_zh: ContentBlock[]; content_en: ContentBlock[];
 }
 
@@ -98,6 +99,8 @@ export interface WorkExperience {
   titleZh: string;
   period: string;
   detailFolder: string;
+  images: string | string[];
+  cover: string;
   contentZh: string | ContentBlock[];
   contentEn: string | ContentBlock[];
   sortOrder: number;
@@ -154,11 +157,25 @@ export interface SiteData {
   categories: Category[];
 }
 
-// Helper to parse JSON content fields from DB rows
-export function parseContent(jsonStr: string): ContentBlock[] {
-  try {
-    return JSON.parse(jsonStr);
-  } catch {
+// Helper to parse content fields from DB rows.
+// Handles both legacy JSON ContentBlock[] format and modern HTML format.
+export function parseContent(value: string): ContentBlock[] {
+  if (!value || typeof value !== "string") return [];
+  const trimmed = value.trim();
+  if (!trimmed) return [];
+
+  // Already HTML — contains HTML tags (new Tiptap format)
+  if (/^<(p|h[1-6]|div|ul|ol|li|img|a|span|b|i|u|strong|em)[^>]*>/i.test(trimmed)) {
+    // Cannot convert HTML back to ContentBlock[], return empty so caller skips block rendering
     return [];
   }
+
+  // Try parsing as JSON array (legacy format)
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (Array.isArray(parsed)) return parsed;
+  } catch {
+    // Plain text string
+  }
+  return [];
 }

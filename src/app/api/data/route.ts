@@ -1,10 +1,7 @@
 import { NextResponse } from "next/server";
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
-
-// Simple in-memory cache for GET requests (valid for 5 seconds)
-let cachedData: { data: unknown; timestamp: number } | null = null;
-const CACHE_TTL = 5000; // 5 seconds
+import { getCachedData, setCachedData } from "@/lib/cache";
 
 function safeJsonParse(str: string, fallback: unknown): unknown {
   try {
@@ -14,13 +11,15 @@ function safeJsonParse(str: string, fallback: unknown): unknown {
   }
 }
 
+// The DB stores raw HTML strings directly from Tiptap.
+// Read path: return as-is (no conversion).
+// Write path: save as-is (no conversion).
 export async function GET(req: NextRequest) {
   try {
-    // Check cache first
-    const now = Date.now();
-    if (cachedData && now - cachedData.timestamp < CACHE_TTL) {
-      return NextResponse.json(cachedData.data, {
-        headers: { "X-Cache": "HIT" },
+    const cached = getCachedData<Record<string, unknown>>();
+    if (cached) {
+      return NextResponse.json(cached.data, {
+        headers: { "Cache-Control": "no-store" },
       });
     }
 
@@ -72,8 +71,10 @@ export async function GET(req: NextRequest) {
         title_zh: w.titleZh,
         period: w.period,
         detail_folder: w.detailFolder,
-        content_zh: safeJsonParse(w.contentZh, []),
-        content_en: safeJsonParse(w.contentEn, []),
+        images: safeJsonParse(w.images, []),
+        cover: w.cover,
+        content_zh: w.contentZh ?? "",
+        content_en: w.contentEn ?? "",
         sort_order: w.sortOrder,
       })),
       services: services.map((s) => ({
@@ -102,19 +103,16 @@ export async function GET(req: NextRequest) {
           imageFolder: p.imageFolder,
           link: p.link,
           images: safeJsonParse(p.images, []),
-          content_zh: safeJsonParse(p.contentZh, []),
-          content_en: safeJsonParse(p.contentEn, []),
+          content_zh: p.contentZh ?? "",
+          content_en: p.contentEn ?? "",
           sort_order: p.sortOrder,
         })),
       })),
     };
 
-    // Cache the result
-    cachedData = { data: result, timestamp: now };
+    setCachedData(result);
 
-    return NextResponse.json(result, {
-      headers: { "X-Cache": "MISS" },
-    });
+    return NextResponse.json(result);
   } catch (error) {
     console.error("[GET /api/data]", error);
     return NextResponse.json({ error: "Failed to read data" }, { status: 500 });
@@ -130,7 +128,6 @@ function validateUrl(value: unknown): string {
   if (typeof value !== "string") return "";
   const trimmed = value.trim();
   if (!trimmed) return "";
-  // Accept absolute URLs or relative paths starting with /
   if (trimmed.startsWith("/")) return trimmed.slice(0, 2000);
   try {
     new URL(trimmed);
@@ -144,10 +141,6 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
 
-    // Clear cache on save
-    cachedData = null;
-
-    // Site
     await prisma.site.upsert({
       where: { id: "site" },
       update: {
@@ -165,7 +158,6 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // About
     await prisma.about.upsert({
       where: { id: "about" },
       update: {
@@ -201,7 +193,6 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Work Experience
     if (Array.isArray(body.workExperience)) {
       await prisma.workExperience.deleteMany({});
       for (let i = 0; i < body.workExperience.length; i++) {
@@ -213,15 +204,16 @@ export async function POST(req: NextRequest) {
             titleZh: validateString(w.title_zh),
             period: validateString(w.period, 100),
             detailFolder: validateString(w.detail_folder, 100),
-            contentZh: JSON.stringify(Array.isArray(w.content_zh) ? w.content_zh : []),
-            contentEn: JSON.stringify(Array.isArray(w.content_en) ? w.content_en : []),
+            images: JSON.stringify(Array.isArray(w.images) ? w.images : []),
+            cover: validateUrl(w.cover),
+            contentZh: typeof w.content_zh === "string" ? w.content_zh.slice(0, 100000) : "",
+            contentEn: typeof w.content_en === "string" ? w.content_en.slice(0, 100000) : "",
             sortOrder: i,
           },
         });
       }
     }
 
-    // Services
     if (Array.isArray(body.services)) {
       await prisma.service.deleteMany({});
       for (let i = 0; i < body.services.length; i++) {
@@ -239,7 +231,6 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Links
     if (body.links) {
       await prisma.link.deleteMany({});
       const platformOrder: Record<string, number> = { linkedin: 0, github: 1, replit: 2, xiaohongshu: 3, email: 4 };
@@ -261,7 +252,6 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Categories & Projects
     if (Array.isArray(body.categories)) {
       await prisma.project.deleteMany({});
       await prisma.category.deleteMany({});
@@ -291,8 +281,8 @@ export async function POST(req: NextRequest) {
               cover: validateUrl(p.cover),
               imageFolder: validateString(p.imageFolder, 100) || validateString(p.id, 100),
               images: JSON.stringify(Array.isArray(p.images) ? p.images : []),
-              contentZh: JSON.stringify(Array.isArray(p.content_zh) ? p.content_zh : []),
-              contentEn: JSON.stringify(Array.isArray(p.content_en) ? p.content_en : []),
+              contentZh: typeof p.content_zh === "string" ? p.content_zh.slice(0, 100000) : "",
+              contentEn: typeof p.content_en === "string" ? p.content_en.slice(0, 100000) : "",
               link: validateUrl(p.link),
               sortOrder: pi,
             },

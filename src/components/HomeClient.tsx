@@ -6,7 +6,6 @@ import Image from "next/image";
 import Nav from "@/components/Nav";
 import type { Category, ContentBlock } from "@/types";
 import { useLocale } from "@/context/LocaleProvider";
-import { initCursor } from "@/lib/cursor";
 
 // ─── Splash Screen ───────────────────────────────────────────────────────────
 
@@ -281,7 +280,6 @@ export default function HomeClient({ categories, about }: HomeClientProps) {
 
   useEffect(() => {
     initSplash();
-    initCursor();
 
     // Keyboard: Escape closes modal/lightbox
     const onKey = (e: KeyboardEvent) => {
@@ -322,15 +320,34 @@ export default function HomeClient({ categories, about }: HomeClientProps) {
 
   const openProjectModal = useCallback(
     (proj: Category["projects"][0]) => {
-      const blocks: ContentBlock[] = isEn
-        ? (proj.contentEn as ContentBlock[])
-        : (proj.contentZh as ContentBlock[]);
+      const rawContent = isEn ? proj.contentEn : proj.contentZh;
+      let content: React.ReactNode;
 
-      const content = renderContentBlocks(
-        blocks,
-        proj.imageFolder,
-        (src) => setLightboxSrc(src)
-      );
+      if (typeof rawContent === "string" && rawContent.trim()) {
+        // HTML string (new Tiptap format) — render directly, wire image clicks
+        content = (
+          <div
+            className="modal-html-content"
+            dangerouslySetInnerHTML={{ __html: rawContent }}
+            onClick={(e) => {
+              const img = (e.target as HTMLElement).closest("img");
+              if (img && img.src) {
+                e.preventDefault();
+                setLightboxSrc(img.src);
+              }
+            }}
+          />
+        );
+      } else if (Array.isArray(rawContent)) {
+        // Legacy ContentBlock[] format
+        content = renderContentBlocks(
+          rawContent as ContentBlock[],
+          proj.imageFolder,
+          (src) => setLightboxSrc(src)
+        );
+      } else {
+        content = null;
+      }
 
       setModal({
         visible: true,

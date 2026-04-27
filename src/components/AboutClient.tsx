@@ -7,7 +7,7 @@ import type { WorkExperience, Service } from "@/types";
 import type { SiteLink } from "@/types";
 import type { ContentBlock } from "@/types";
 import { useLocale } from "@/context/LocaleProvider";
-import { initCursor } from "@/lib/cursor";
+// CursorProvider handles init at layout level
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -201,8 +201,6 @@ export default function AboutClient({
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
   useEffect(() => {
-    initCursor();
-
     // Keyboard
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
