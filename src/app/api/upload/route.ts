@@ -27,16 +27,30 @@ export async function POST(request: Request) {
     const allowedExts = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg"];
     const ext = allowedExts.includes(rawExt) ? rawExt : ".bin";
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 100);
-    const filename = `${Date.now()}-${safeName}${ext}`;
+    const nameWithoutExt = safeName.replace(/\.[^.]+$/, ""); // strip original extension
+    const filename = `${Date.now()}-${nameWithoutExt}${ext}`;
 
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
     const publicDir = path.join(process.cwd(), "public");
-    // about photos go to /images/about/, other files to /images/projects/{folder}/
-    const uploadDir = folder === "about"
-      ? path.join(publicDir, "images", "about")
-      : path.join(publicDir, "images", "projects", folder);
+    let uploadDir: string;
+    let urlPath: string;
+    if (folder === "about") {
+      uploadDir = path.join(publicDir, "images", "about");
+      urlPath = `/images/about/${filename}`;
+    } else if (folder.startsWith("w-")) {
+      // work folders: w-12345 → /images/work/w-12345/
+      uploadDir = path.join(publicDir, "images", "work", folder);
+      urlPath = `/images/work/${folder}/${filename}`;
+    } else if (folder && folder.trim()) {
+      // project/category folders: proj-12345, cat-xxx → /images/projects/{folder}/
+      uploadDir = path.join(publicDir, "images", "projects", folder);
+      urlPath = `/images/projects/${folder}/${filename}`;
+    } else {
+      uploadDir = path.join(publicDir, "images", "uploads");
+      urlPath = `/images/uploads/${filename}`;
+    }
 
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
@@ -45,10 +59,7 @@ export async function POST(request: Request) {
     const filepath = path.join(uploadDir, filename);
     fs.writeFileSync(filepath, buffer);
 
-    const url = folder === "about"
-      ? `/images/about/${filename}`
-      : `/images/projects/${folder}/${filename}`;
-    return NextResponse.json({ url });
+    return NextResponse.json({ url: urlPath });
   } catch (error) {
     console.error("[POST /api/upload]", error);
     return NextResponse.json({ error: "Upload failed" }, { status: 500 });
