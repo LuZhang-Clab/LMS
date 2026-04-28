@@ -45,19 +45,29 @@ function denormalizeContentUrls(html: string, folder: string): string {
   return html.replace(
     /<img([^>]+)src=(["'])(https?:\/\/[^"']+)\2/gi,
     (_, attrs, quote, src) => {
-      // Preserve blob URLs and other external URLs unchanged
-      if (src.startsWith("https://") && src.includes(".blob.vercel-storage.com")) {
-        return `<img${attrs}src=${quote}${src}${quote}`;
-      }
+      // Preserve any URL that already has a scheme (https:// or http://)
+      // — blob URLs, CDN URLs, external images stay as-is
       if (src.startsWith("http://") || src.startsWith("https://")) {
         return `<img${attrs}src=${quote}${src}${quote}`;
       }
+      // Strip our known absolute prefix if present
       if (src.startsWith(prefix + "/")) {
         const rel = src.slice(prefix.length + 1);
         return `<img${attrs}src=${quote}${rel}${quote}`;
       }
       return `<img${attrs}src=${quote}${src}${quote}`;
     }
+  );
+}
+
+// Strip any double-prefixed paths from existing DB content:
+// e.g. /images/projects/xxx//images/projects/xxx/photo.jpg → photo.jpg
+// Used only when loading data from DB to fix legacy corrupted paths.
+function stripDoublePrefix(html: string): string {
+  if (!html) return html;
+  return html.replace(
+    /src=(["'])\/images\/projects\/[^/"']+\/\/images\/projects\/[^/"']+\/([^"']+)\1/gi,
+    (_, quote, filename) => `src=${quote}${filename}${quote}`
   );
 }
 
@@ -620,16 +630,18 @@ function ProjectItem({
   const [localContentEn, setLocalContentEn] = useState(proj.content_en || "");
 
   const extractFirstImage = (html: string): string => {
-    // Match src="..." or src='...' (handles spaces in path)
-    const match = html.match(/<img[^>]+src=(["'])([^"']+)\1/);
+    // Support URLs with query strings (?token=abc&ver=1)
+    const match = html.match(/src\s*=\s*(["'])([^"']+)\1/i);
     return match ? match[2] : "";
   };
 
   const extractAllImages = (html: string): string[] => {
-    const matches = html.matchAll(/<img[^>]+src=(["'])([^"']+)\1/g);
+    // Support URLs with query strings (?token=abc&ver=1) by matching src value
+    // across the entire attribute, not stopping at & or ?
+    const matches = html.matchAll(/src\s*=\s*(["'])([^"']+)\1/gi);
     const images: string[] = [];
     for (const match of matches) {
-      const src = match[2];
+      const src = match[2].trim();
       if (src && !images.includes(src)) {
         images.push(src);
       }
@@ -671,8 +683,9 @@ function ProjectItem({
           imageFolder: proj.imageFolder,
           link: proj.link,
           images: allImages,
-          content_zh: localContentZh,
-          content_en: localContentEn,
+          // denormalize converts absolute paths back to relative so DB stores consistent relative paths
+          content_zh: denormalizeContentUrls(localContentZh, proj.imageFolder),
+          content_en: denormalizeContentUrls(localContentEn, proj.imageFolder),
         }),
       });
       if (res.ok) {
@@ -1459,15 +1472,17 @@ function WorkExpItem({
   const [localContentEn, setLocalContentEn] = useState(exp.content_en || "");
 
   const extractFirstImage = (html: string): string => {
-    const match = html.match(/<img[^>]+src=(["'])([^"']+)\1/i);
+    // Support URLs with query strings (?token=abc&ver=1)
+    const match = html.match(/src\s*=\s*(["'])([^"']+)\1/i);
     return match ? match[2] : "";
   };
 
   const extractAllImages = (html: string): string[] => {
-    const matches = html.matchAll(/<img[^>]+src=(["'])([^"']+)\1/gi);
+    // Support URLs with query strings (?token=abc&ver=1) by matching src value across the entire attribute
+    const matches = html.matchAll(/src\s*=\s*(["'])([^"']+)\1/gi);
     const imgs: string[] = [];
     for (const m of matches) {
-      const src = m[2];
+      const src = m[2].trim();
       if (src && !imgs.includes(src)) imgs.push(src);
     }
     return imgs;
@@ -1475,16 +1490,12 @@ function WorkExpItem({
 
   const denormalizeContentUrls = (html: string): string => {
     if (!html) return html;
+    // Preserve blob URLs (https:// with query strings) as-is
+    // Strip our known /images/projects/xxx/ prefix if present
     return html.replace(
       /<img([^>]+)src=(["'])(https?:\/\/[^"']+)\2/gi,
       (_, attrs, quote, src) => {
-        // Preserve blob URLs and other external URLs unchanged
-        if (src.startsWith("https://") && src.includes(".blob.vercel-storage.com")) {
-          return `<img${attrs}src=${quote}${src}${quote}`;
-        }
-        if (src.startsWith("http://") || src.startsWith("https://")) {
-          return `<img${attrs}src=${quote}${src}${quote}`;
-        }
+        // Already absolute — preserve blob/CDN/external URLs unchanged
         return `<img${attrs}src=${quote}${src}${quote}`;
       }
     );
@@ -1521,8 +1532,8 @@ function WorkExpItem({
           title_zh: exp.title_zh,
           title_en: exp.title_en,
           period: exp.period,
-          content_zh: localContentZh,
-          content_en: localContentEn,
+          content_zh: denormalizeContentUrls(localContentZh),
+          content_en: denormalizeContentUrls(localContentEn),
           cover: resolvedCover,
           images: allImages,
           sort_order: index,
@@ -1986,19 +1997,21 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
           categories: result.categories.map((cat: { projects: Array<Record<string, unknown>> }) => ({
             ...cat,
             projects: cat.projects.map((p: Record<string, unknown>) => {
-              // Extract all images from content if images field is empty
-              const contentZh = normalizeContentUrls(p.content_zh as string ?? "", p.imageFolder as string);
-              const contentEn = normalizeContentUrls(p.content_en as string ?? "", p.imageFolder as string);
+              // Fix double-prefixed paths from legacy corrupted data before normalizing
+              const rawZh = stripDoublePrefix((p.content_zh as string) ?? "");
+              const rawEn = stripDoublePrefix((p.content_en as string) ?? "");
+              const contentZh = normalizeContentUrls(rawZh, p.imageFolder as string);
+              const contentEn = normalizeContentUrls(rawEn, p.imageFolder as string);
               const existingImages = Array.isArray(p.images) ? p.images : [];
 
               // If images is empty, extract from content
               let images = existingImages;
               if (images.length === 0 && (contentZh || contentEn)) {
                 const extractImgs = (html: string) => {
-                  const matches = html.matchAll(/<img[^>]+src=(["'])([^"']+)\1/g);
+                  const matches = html.matchAll(/src\s*=\s*(["'])([^"']+)\1/gi);
                   const imgs: string[] = [];
                   for (const m of matches) {
-                    const src = m[2];
+                    const src = m[2].trim();
                     if (src && !imgs.includes(src)) imgs.push(src);
                   }
                   return imgs;
@@ -2017,18 +2030,20 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
             }),
           })),
           workExperience: (result.workExperience || []).map((w: Record<string, unknown>) => {
-            const contentZh = normalizeContentUrls(w.content_zh as string ?? "", (w.detail_folder || w.id) as string);
-            const contentEn = normalizeContentUrls(w.content_en as string ?? "", (w.detail_folder || w.id) as string);
+            const rawZh = stripDoublePrefix((w.content_zh as string) ?? "");
+            const rawEn = stripDoublePrefix((w.content_en as string) ?? "");
+            const contentZh = normalizeContentUrls(rawZh, (w.detail_folder || w.id) as string);
+            const contentEn = normalizeContentUrls(rawEn, (w.detail_folder || w.id) as string);
             const existingImages = Array.isArray(w.images) ? w.images : [];
 
             // If images is empty, extract from content
             let images = existingImages;
             if (images.length === 0 && (contentZh || contentEn)) {
               const extractImgs = (html: string) => {
-                const matches = html.matchAll(/<img[^>]+src=(["'])([^"']+)\1/g);
+                const matches = html.matchAll(/src\s*=\s*(["'])([^"']+)\1/gi);
                 const imgs: string[] = [];
                 for (const m of matches) {
-                  const src = m[2];
+                  const src = m[2].trim();
                   if (src && !imgs.includes(src)) imgs.push(src);
                 }
                 return imgs;

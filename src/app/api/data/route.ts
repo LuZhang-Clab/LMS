@@ -95,18 +95,26 @@ export async function GET(req: NextRequest) {
         name_en: cat.nameEn,
         name_zh: cat.nameZh,
         sort_order: cat.sortOrder,
-        projects: cat.projects.map((p) => ({
-          id: p.id,
-          title_en: p.titleEn,
-          title_zh: p.titleZh,
-          cover: p.cover,
-          imageFolder: p.imageFolder,
-          link: p.link,
-          images: safeJsonParse(p.images, []),
-          content_zh: p.contentZh ?? "",
-          content_en: p.contentEn ?? "",
-          sort_order: p.sortOrder,
-        })),
+        projects: cat.projects.map((p) => {
+          // DEBUG: log content presence
+          const zhLen = (p.contentZh ?? "").length;
+          const enLen = (p.contentEn ?? "").length;
+          if (zhLen > 0 || enLen > 0) {
+            console.log(`[GET /api/data] project "${p.titleZh || p.titleEn || p.id}" content: zh=${zhLen} chars, en=${enLen} chars`);
+          }
+          return {
+            id: p.id,
+            title_en: p.titleEn,
+            title_zh: p.titleZh,
+            cover: p.cover,
+            imageFolder: p.imageFolder,
+            link: p.link,
+            images: safeJsonParse(p.images, []),
+            content_zh: p.contentZh ?? "",
+            content_en: p.contentEn ?? "",
+            sort_order: p.sortOrder,
+          };
+        }),
       })),
     };
 

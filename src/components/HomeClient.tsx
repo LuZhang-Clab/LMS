@@ -230,6 +230,17 @@ export default function HomeClient({ categories, about }: HomeClientProps) {
   const openProjectModal = useCallback(
     (proj: Category["projects"][0]) => {
       const rawContent = isEn ? proj.contentEn : proj.contentZh;
+
+      // DEBUG: log content status
+      console.log("[openProjectModal]", {
+        id: proj.id,
+        locale: locale,
+        rawContentType: typeof rawContent,
+        rawContentLength: typeof rawContent === "string" ? rawContent.length : "N/A",
+        rawContentPreview: typeof rawContent === "string" ? rawContent.slice(0, 100) : rawContent,
+        imageFolder: proj.imageFolder,
+      });
+
       let content: React.ReactNode;
 
       if (typeof rawContent === "string" && rawContent.trim()) {

@@ -178,9 +178,13 @@ export async function PUT(req: NextRequest) {
         cover,
         imageFolder,
         images,
-        contentZh,
-        contentEn,
+        contentZh: contentZh ? `${contentZh.slice(0, 200)}... (len=${contentZh.length})` : "(empty)",
+        contentEn: contentEn ? `${contentEn.slice(0, 200)}... (len=${contentEn.length})` : "(empty)",
       });
+
+      if (!contentZh && !contentEn) {
+        console.warn("[PUT /api/admin/update] WARNING: both content fields are empty! proj.id =", id);
+      }
 
       const result = await prisma.project.upsert({
         where: { id },
