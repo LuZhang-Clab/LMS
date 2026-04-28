@@ -51,11 +51,11 @@ export async function POST(request: Request) {
     // Upload to Vercel Blob
     const arrayBuffer = await (file as File).arrayBuffer();
     const blob = await put(blobPath, arrayBuffer, {
-      access: "private",
+      access: "public",
       contentType: (file as File).type,
     });
 
-    return NextResponse.json({ url: blob.downloadUrl });
+    return NextResponse.json({ url: blob.url });
   } catch (error) {
     console.error("[POST /api/upload]", error);
     const message = error instanceof Error ? error.message : "Upload failed";
