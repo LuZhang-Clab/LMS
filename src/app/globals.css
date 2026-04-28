@@ -705,6 +705,39 @@ body.admin-mode {
   white-space: pre-line;
 }
 
+.modal-tiptap-content {
+  font-family: var(--font-noto-sans), "Noto Sans SC", sans-serif;
+  font-size: 0.88rem;
+  line-height: 1.95;
+  color: var(--text-dim);
+}
+
+.modal-tiptap-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+  cursor: pointer;
+  margin: 0.8rem 0;
+}
+
+.modal-tiptap-content p {
+  margin-bottom: 0.8rem;
+}
+
+.modal-tiptap-content h1,
+.modal-tiptap-content h2,
+.modal-tiptap-content h3 {
+  font-family: var(--font-noto-serif), "Noto Serif SC", serif;
+  font-weight: 400;
+  margin: 1.2rem 0 0.6rem;
+  text-align: center;
+}
+
+.modal-tiptap-content a {
+  color: var(--text);
+  text-decoration: underline;
+}
+
 .modal-link {
   display: inline-block;
   margin: 1.2rem auto 0;

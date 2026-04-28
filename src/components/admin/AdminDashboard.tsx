@@ -96,6 +96,7 @@ interface SiteData {
       images: string[];
       content_zh: string;
       content_en: string;
+      sort_order: number;
     }>;
   }>;
   workExperience: Array<{
@@ -103,17 +104,21 @@ interface SiteData {
     title_zh: string;
     title_en: string;
     period: string;
-    detailFolder: string;
+    detail_folder: string;
     images: string[];
     cover: string;
     content_zh: string;
     content_en: string;
+    sort_order: number;
+    newEntry?: boolean;
   }>;
   services: Array<{
+    id: string;
     title_zh: string;
     title_en: string;
     desc_zh: string;
     desc_en: string;
+    sort_order: number;
   }>;
 }
 
@@ -612,6 +617,18 @@ function ProjectItem({
     return match ? match[2] : "";
   };
 
+  const extractAllImages = (html: string): string[] => {
+    const matches = html.matchAll(/<img[^>]+src=(["'])([^"']+)\1/g);
+    const images: string[] = [];
+    for (const match of matches) {
+      const src = match[2];
+      if (src && !images.includes(src)) {
+        images.push(src);
+      }
+    }
+    return images;
+  };
+
   const handleContentChange = (field: "content_zh" | "content_en", html: string) => {
     // Strip absolute image prefix so stored data stays in relative-path form
     const normalized = denormalizeContentUrls(html, proj.imageFolder);
@@ -628,6 +645,11 @@ function ProjectItem({
   const handleSave = async () => {
     setSaveStatus("saving");
     try {
+      // Extract all images from content_zh and content_en
+      const zhImages = extractAllImages(localContentZh);
+      const enImages = extractAllImages(localContentEn);
+      const allImages = [...new Set([...zhImages, ...enImages])];
+
       const res = await fetch("/api/admin/update", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -640,11 +662,15 @@ function ProjectItem({
           cover: proj.cover || extractFirstImage(localContentZh) || extractFirstImage(localContentEn),
           imageFolder: proj.imageFolder,
           link: proj.link,
+          images: allImages,
           content_zh: localContentZh,
           content_en: localContentEn,
         }),
       });
       if (res.ok) {
+        // Update local state with extracted images
+        onUpdate("images", allImages);
+        onUpdate("cover", proj.cover || extractFirstImage(localContentZh) || extractFirstImage(localContentEn));
         setSaveStatus("saved");
         setTimeout(() => setSaveStatus("idle"), 2000);
         onToast?.("项目已保存", "success");
@@ -1017,17 +1043,17 @@ function ProjectsTab({ data, updateData, showToast }: { data: SiteData; updateDa
       newCats[catIndex].projects.push({
         id,
         categoryId,
-        title_en: "",
         title_zh: "",
+        title_en: "",
         cover: "",
         imageFolder: id,
         link: "",
-          images: [],
-          content_zh: "",
-          content_en: "",
-          sort_order: data.categories[catIndex].projects.length,
-        });
-        updateData("categories", newCats);
+        images: [],
+        content_zh: "",
+        content_en: "",
+        sort_order: data.categories[catIndex].projects.length,
+      });
+      updateData("categories", newCats);
     } catch (e) {
       console.error("Failed to add project:", e);
     }
@@ -1217,7 +1243,7 @@ function ProjectsTab({ data, updateData, showToast }: { data: SiteData; updateDa
 }
 
 // ============ About Tab ============
-function AboutTab({ data, updateData }: { data: SiteData; updateData: (path: string, value: unknown) => void }) {
+function AboutTab({ data, updateData, showToast }: { data: SiteData; updateData: (path: string, value: unknown) => void; showToast: (msg: string, type?: string) => void }) {
   const updateAbout = (field: string, value: string) => {
     updateData("about", { ...data.about, [field]: value });
   };
@@ -1335,11 +1361,12 @@ function AboutTab({ data, updateData }: { data: SiteData; updateData: (path: str
       <div style={{ marginTop: "1rem" }}>
         <button
           onClick={async () => {
-            await fetch("/api/admin/update", {
+            const res = await fetch("/api/admin/update", {
               method: "PUT",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ type: "about", ...data.about }),
             });
+            showToast(res.ok ? "保存成功" : "保存失败", res.ok ? "success" : "error");
           }}
           style={{ ...styles.btnPrimary, cursor: "pointer" }}
         >
@@ -1352,65 +1379,29 @@ function AboutTab({ data, updateData }: { data: SiteData; updateData: (path: str
 
 // ============ Work Tab ============
 function WorkTab({ data, updateData, showToast }: { data: SiteData; updateData: (path: string, value: unknown) => void; showToast: (msg: string, type?: string) => void }) {
-  const addWork = async () => {
+  const addWork = () => {
     const id = "w-" + Date.now();
-    try {
-      await fetch("/api/admin/update", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: "work",
-          id,
-          title_zh: "",
-          title_en: "",
-          period: "",
-          detailFolder: id,
-          images: [],
-          cover: "",
-          content_zh: "",
-          content_en: "",
-          sort_order: data.workExperience.length,
-        }),
-      });
-      updateData("workExperience", [
-        ...data.workExperience,
-        {
-          id,
-          title_zh: "",
-          title_en: "",
-          period: "",
-          detail_folder: id,
-          images: "[]",
-          cover: "",
-          content_zh: "",
-          content_en: "",
-          sort_order: data.workExperience.length,
-        },
-      ]);
-      showToast("工作经历已添加", "success");
-    } catch (e) {
-      console.error("Failed to add work:", e);
-      showToast("添加失败", "error");
-    }
+    updateData("workExperience", [
+      ...data.workExperience,
+      {
+        id,
+        title_zh: "",
+        title_en: "",
+        period: "",
+        cover: "",
+        images: [],
+        content_zh: "",
+        content_en: "",
+        newEntry: true,
+        sort_order: data.workExperience.length,
+      },
+    ]);
   };
 
-  const removeWork = async (index: number) => {
-    if (!confirm("删除？")) return;
-    const workId = data.workExperience[index].id;
-    try {
-      await fetch("/api/admin/update", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: "work", id: workId }),
-      });
-      const newWork = [...data.workExperience];
-      newWork.splice(index, 1);
-      updateData("workExperience", newWork);
-      showToast("工作经历已删除", "success");
-    } catch (e) {
-      console.error("Failed to delete work:", e);
-      showToast("删除失败", "error");
-    }
+  const removeWork = (index: number) => {
+    const newWork = [...data.workExperience];
+    newWork.splice(index, 1);
+    updateData("workExperience", newWork);
   };
 
   const updateWork = (index: number, field: string, value: unknown) => {
@@ -1428,127 +1419,235 @@ function WorkTab({ data, updateData, showToast }: { data: SiteData; updateData: 
       </div>
 
       {data.workExperience.map((exp, i) => (
-        <div key={exp.id} style={styles.card}>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: "0.8rem",
-            }}
-          >
-            <strong style={{ fontSize: "0.9rem", color: "#d4af37" }}>
-              {exp.title_zh || "新职位"}
-            </strong>
-            <button onClick={() => removeWork(i)} style={{ ...styles.btnDanger, cursor: "pointer" }}>
-              删除
-            </button>
-          </div>
-
-          <div style={styles.row}>
-            <div style={{ flex: 1 }}>
-              <label style={styles.label}>职位 (中文)</label>
-              <input
-                type="text"
-                value={exp.title_zh}
-                onChange={(e) => updateWork(i, "title_zh", e.target.value)}
-                style={styles.input}
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <label style={styles.label}>职位 (英文)</label>
-              <input
-                type="text"
-                value={exp.title_en}
-                onChange={(e) => updateWork(i, "title_en", e.target.value)}
-                style={styles.input}
-              />
-            </div>
-          </div>
-
-          <div style={styles.row}>
-            <div style={{ flex: 1 }}>
-              <label style={styles.label}>时间段</label>
-              <input
-                type="text"
-                value={exp.period}
-                onChange={(e) => updateWork(i, "period", e.target.value)}
-                style={styles.input}
-                placeholder="例如：2020.03 – 至今"
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <label style={styles.label}>关联图片文件夹 (可选)</label>
-              <input
-                type="text"
-                value={exp.detailFolder}
-                onChange={(e) => updateWork(i, "detailFolder", e.target.value)}
-                style={styles.input}
-              />
-            </div>
-          </div>
-
-          <SectionHeader label="工作图片 · IMAGES" />
-          <ImageUploader
-            images={exp.images || []}
-            cover={exp.cover}
-            imageFolder={exp.detailFolder || exp.id}
-            onImagesChange={(images) => updateWork(i, "images", images)}
-            onCoverChange={(cover) => updateWork(i, "cover", cover)}
-          />
-
-          <SectionHeader label="详情内容 · DETAILS" />
-          <div style={styles.formGroup}>
-            <label style={{ ...styles.label, color: "#777" }}>
-              中文 <span style={{ fontWeight: 400, textTransform: "none", fontStyle: "italic", color: "#555" }}>Chinese</span>
-            </label>
-            <TiptapEditor
-              initialHtml={exp.content_zh || ""}
-              onChange={(html) => updateWork(i, "content_zh", html)}
-              imageFolder={exp.detailFolder || exp.id}
-            />
-          </div>
-
-          <div style={styles.formGroup}>
-            <label style={{ ...styles.label, color: "#777" }}>
-              英文 <span style={{ fontWeight: 400, textTransform: "none", fontStyle: "italic", color: "#555" }}>English</span>
-            </label>
-            <TiptapEditor
-              initialHtml={exp.content_en || ""}
-              onChange={(html) => updateWork(i, "content_en", html)}
-              imageFolder={exp.detailFolder || exp.id}
-            />
-          </div>
-        </div>
+        <WorkExpItem
+          key={exp.id}
+          exp={exp}
+          index={i}
+          onUpdate={(field, value) => updateWork(i, field, value)}
+          onDelete={() => removeWork(i)}
+          showToast={showToast}
+        />
       ))}
-      {/* Save all work */}
+    </div>
+  );
+}
+
+function WorkExpItem({
+  exp,
+  index,
+  onUpdate,
+  onDelete,
+  showToast,
+}: {
+  exp: SiteData["workExperience"][0];
+  index: number;
+  onUpdate: (field: string, value: unknown) => void;
+  onDelete: () => void;
+  showToast: (msg: string, type?: string) => void;
+}) {
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [deleting, setDeleting] = useState(false);
+  const [localContentZh, setLocalContentZh] = useState(exp.content_zh || "");
+  const [localContentEn, setLocalContentEn] = useState(exp.content_en || "");
+
+  const extractFirstImage = (html: string): string => {
+    const match = html.match(/<img[^>]+src=(["'])([^"']+)\1/i);
+    return match ? match[2] : "";
+  };
+
+  const extractAllImages = (html: string): string[] => {
+    const matches = html.matchAll(/<img[^>]+src=(["'])([^"']+)\1/gi);
+    const imgs: string[] = [];
+    for (const m of matches) {
+      const src = m[2];
+      if (src && !imgs.includes(src)) imgs.push(src);
+    }
+    return imgs;
+  };
+
+  const denormalizeContentUrls = (html: string): string => {
+    if (!html) return html;
+    return html.replace(
+      /<img([^>]+)src=(["'])(https?:\/\/[^"']+)\2/gi,
+      (_, attrs, quote, src) => `<img${attrs}src=${quote}${src}${quote}`
+    );
+  };
+
+  const handleContentChange = (field: "content_zh" | "content_en", html: string) => {
+    const normalized = denormalizeContentUrls(html);
+    if (field === "content_zh") setLocalContentZh(normalized);
+    else setLocalContentEn(normalized);
+    onUpdate(field, normalized);
+    if (!exp.cover) {
+      const firstImg = extractFirstImage(normalized);
+      if (firstImg) onUpdate("cover", firstImg);
+    }
+  };
+
+  const handleSave = async () => {
+    setSaveStatus("saving");
+    try {
+      const zhImg = extractAllImages(localContentZh);
+      const enImg = extractAllImages(localContentEn);
+      const allImages = [...new Set([...zhImg, ...enImg])];
+      const resolvedCover =
+        exp.cover ||
+        extractFirstImage(localContentZh) ||
+        extractFirstImage(localContentEn);
+
+      const res = await fetch("/api/admin/update", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "work",
+          id: exp.id,
+          title_zh: exp.title_zh,
+          title_en: exp.title_en,
+          period: exp.period,
+          content_zh: localContentZh,
+          content_en: localContentEn,
+          cover: resolvedCover,
+          images: allImages,
+          sort_order: index,
+        }),
+      });
+      if (res.ok) {
+        onUpdate("images", allImages);
+        onUpdate("cover", resolvedCover);
+        setSaveStatus("saved");
+        setTimeout(() => setSaveStatus("idle"), 2000);
+        showToast("保存成功", "success");
+      } else {
+        setSaveStatus("error");
+        showToast("保存失败，请重试", "error");
+      }
+    } catch {
+      setSaveStatus("error");
+      showToast("保存失败", "error");
+    }
+  };
+
+  return (
+    <div style={styles.card}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "0.8rem",
+        }}
+      >
+        <strong style={{ fontSize: "0.9rem", color: "#d4af37" }}>
+          {exp.title_zh || "新职位"}
+        </strong>
+        <button
+          onClick={() => {
+            if (!confirm(exp.newEntry ? "确定移除此工作经历？" : "确定删除此工作经历？图片文件也会一并删除。")) return;
+            setDeleting(true);
+            if (exp.newEntry) {
+              onDelete();
+              setDeleting(false);
+              return;
+            }
+            fetch("/api/admin/update", {
+              method: "DELETE",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ type: "work", id: exp.id }),
+            }).then((res) => {
+              if (res.ok) {
+                onDelete();
+                showToast("工作经历已删除", "success");
+              } else {
+                setDeleting(false);
+                showToast("删除失败", "error");
+              }
+            });
+          }}
+          disabled={deleting}
+          style={{
+            ...styles.btnDanger,
+            opacity: deleting ? 0.6 : 1,
+            cursor: deleting ? "not-allowed" : "pointer",
+          }}
+        >
+          {deleting ? "删除中..." : "删除"}
+        </button>
+      </div>
+
+      <div style={styles.row}>
+        <div style={{ flex: 1 }}>
+          <label style={styles.label}>职位 (中文)</label>
+          <input
+            type="text"
+            value={exp.title_zh}
+            onChange={(e) => onUpdate("title_zh", e.target.value)}
+            style={styles.input}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label style={styles.label}>职位 (英文)</label>
+          <input
+            type="text"
+            value={exp.title_en}
+            onChange={(e) => onUpdate("title_en", e.target.value)}
+            style={styles.input}
+          />
+        </div>
+      </div>
+
+      <div style={styles.row}>
+        <div style={{ flex: 1 }}>
+          <label style={styles.label}>时间段</label>
+          <input
+            type="text"
+            value={exp.period}
+            onChange={(e) => onUpdate("period", e.target.value)}
+            style={styles.input}
+            placeholder="例如：2020.03 – 至今"
+          />
+        </div>
+      </div>
+
+      <SectionHeader label="详情内容 · DETAILS" />
+      <div style={styles.formGroup}>
+        <label style={{ ...styles.label, color: "#777" }}>
+          中文 <span style={{ fontWeight: 400, textTransform: "none", fontStyle: "italic", color: "#555" }}>Chinese</span>
+        </label>
+        <TiptapEditor
+          initialHtml={localContentZh}
+          onChange={(html) => handleContentChange("content_zh", html)}
+          imageFolder={`work/${exp.id}`}
+        />
+      </div>
+
+      <div style={styles.formGroup}>
+        <label style={{ ...styles.label, color: "#777" }}>
+          英文 <span style={{ fontWeight: 400, textTransform: "none", fontStyle: "italic", color: "#555" }}>English</span>
+        </label>
+        <TiptapEditor
+          initialHtml={localContentEn}
+          onChange={(html) => handleContentChange("content_en", html)}
+          imageFolder={`work/${exp.id}`}
+        />
+      </div>
+
       <div style={{ marginTop: "1rem" }}>
         <button
-          onClick={async () => {
-            for (const w of data.workExperience) {
-              await fetch("/api/admin/update", {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  type: "work",
-                  id: w.id,
-                  title_zh: w.title_zh,
-                  title_en: w.title_en,
-                  period: w.period,
-                  detailFolder: w.detail_folder,
-                  images: w.images,
-                  cover: w.cover,
-                  content_zh: w.content_zh,
-                  content_en: w.content_en,
-                  sort_order: w.sort_order,
-                }),
-              });
-            }
-            showToast("工作经历已保存", "success");
+          onClick={handleSave}
+          disabled={saveStatus === "saving"}
+          style={{
+            ...styles.btnPrimary,
+            opacity: saveStatus === "saving" ? 0.6 : 1,
+            cursor: saveStatus === "saving" ? "not-allowed" : "pointer",
           }}
-          style={{ ...styles.btnPrimary, cursor: "pointer" }}
         >
-          保存全部工作经历
+          {saveStatus === "saving"
+            ? "保存中..."
+            : saveStatus === "saved"
+            ? "已保存 ✓"
+            : saveStatus === "error"
+            ? "保存失败，重试"
+            : "保存此工作经历"}
         </button>
       </div>
     </div>
@@ -1556,7 +1655,7 @@ function WorkTab({ data, updateData, showToast }: { data: SiteData; updateData: 
 }
 
 // ============ Services Tab ============
-function ServicesTab({ data, updateData }: { data: SiteData; updateData: (path: string, value: unknown) => void }) {
+function ServicesTab({ data, updateData, showToast }: { data: SiteData; updateData: (path: string, value: unknown) => void; showToast: (msg: string, type?: string) => void }) {
   const addService = async () => {
     const id = "svc-" + Date.now();
     try {
@@ -1672,6 +1771,7 @@ function ServicesTab({ data, updateData }: { data: SiteData; updateData: (path: 
                 body: JSON.stringify({ type: "service", id: s.id, title_zh: s.title_zh, title_en: s.title_en, desc_zh: s.desc_zh, desc_en: s.desc_en, sort_order: s.sort_order }),
               });
             }
+            showToast("保存成功", "success");
           }}
           style={{ ...styles.btnPrimary, cursor: "pointer" }}
         >
@@ -1683,7 +1783,7 @@ function ServicesTab({ data, updateData }: { data: SiteData; updateData: (path: 
 }
 
 // ============ Site Settings Tab ============
-function SiteSettingsTab({ data, updateData }: { data: SiteData; updateData: (path: string, value: unknown) => void }) {
+function SiteSettingsTab({ data, updateData, showToast }: { data: SiteData; updateData: (path: string, value: unknown) => void; showToast: (msg: string, type?: string) => void }) {
   const updateSite = (field: string, value: string) => {
     updateData("site", { ...data.site, [field]: value });
   };
@@ -1826,6 +1926,7 @@ function SiteSettingsTab({ data, updateData }: { data: SiteData; updateData: (pa
                 });
               }
             }
+            showToast("保存成功", "success");
           }}
           style={{ ...styles.btnPrimary, cursor: "pointer" }}
         >
@@ -1867,17 +1968,66 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
           ...result,
           categories: result.categories.map((cat: { projects: Array<Record<string, unknown>> }) => ({
             ...cat,
-            projects: cat.projects.map((p: Record<string, unknown>) => ({
-              ...p,
-              content_zh: normalizeContentUrls(p.content_zh as string ?? "", p.imageFolder as string),
-              content_en: normalizeContentUrls(p.content_en as string ?? "", p.imageFolder as string),
-            })),
+            projects: cat.projects.map((p: Record<string, unknown>) => {
+              // Extract all images from content if images field is empty
+              const contentZh = normalizeContentUrls(p.content_zh as string ?? "", p.imageFolder as string);
+              const contentEn = normalizeContentUrls(p.content_en as string ?? "", p.imageFolder as string);
+              const existingImages = Array.isArray(p.images) ? p.images : [];
+
+              // If images is empty, extract from content
+              let images = existingImages;
+              if (images.length === 0 && (contentZh || contentEn)) {
+                const extractImgs = (html: string) => {
+                  const matches = html.matchAll(/<img[^>]+src=(["'])([^"']+)\1/g);
+                  const imgs: string[] = [];
+                  for (const m of matches) {
+                    const src = m[2];
+                    if (src && !imgs.includes(src)) imgs.push(src);
+                  }
+                  return imgs;
+                };
+                const zhImgs = extractImgs(contentZh);
+                const enImgs = extractImgs(contentEn);
+                images = [...new Set([...zhImgs, ...enImgs])];
+              }
+
+              return {
+                ...p,
+                images,
+                content_zh: contentZh,
+                content_en: contentEn,
+              };
+            }),
           })),
-          workExperience: (result.workExperience || []).map((w: Record<string, unknown>) => ({
-            ...w,
-            content_zh: normalizeContentUrls(w.content_zh as string ?? "", (w.detailFolder || w.id) as string),
-            content_en: normalizeContentUrls(w.content_en as string ?? "", (w.detailFolder || w.id) as string),
-          })),
+          workExperience: (result.workExperience || []).map((w: Record<string, unknown>) => {
+            const contentZh = normalizeContentUrls(w.content_zh as string ?? "", (w.detail_folder || w.id) as string);
+            const contentEn = normalizeContentUrls(w.content_en as string ?? "", (w.detail_folder || w.id) as string);
+            const existingImages = Array.isArray(w.images) ? w.images : [];
+
+            // If images is empty, extract from content
+            let images = existingImages;
+            if (images.length === 0 && (contentZh || contentEn)) {
+              const extractImgs = (html: string) => {
+                const matches = html.matchAll(/<img[^>]+src=(["'])([^"']+)\1/g);
+                const imgs: string[] = [];
+                for (const m of matches) {
+                  const src = m[2];
+                  if (src && !imgs.includes(src)) imgs.push(src);
+                }
+                return imgs;
+              };
+              const zhImgs = extractImgs(contentZh);
+              const enImgs = extractImgs(contentEn);
+              images = [...new Set([...zhImgs, ...enImgs])];
+            }
+
+            return {
+              ...w,
+              images,
+              content_zh: contentZh,
+              content_en: contentEn,
+            };
+          }),
         };
         setData(converted);
       }
@@ -2023,10 +2173,10 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
 
         {/* Tab Content */}
         {activeTab === "projects" && <ProjectsTab data={data} updateData={updateData} showToast={showToast} />}
-        {activeTab === "about" && <AboutTab data={data} updateData={updateData} />}
+        {activeTab === "about" && <AboutTab data={data} updateData={updateData} showToast={showToast} />}
         {activeTab === "work" && <WorkTab data={data} updateData={updateData} showToast={showToast} />}
-        {activeTab === "services" && <ServicesTab data={data} updateData={updateData} />}
-        {activeTab === "site" && <SiteSettingsTab data={data} updateData={updateData} />}
+        {activeTab === "services" && <ServicesTab data={data} updateData={updateData} showToast={showToast} />}
+        {activeTab === "site" && <SiteSettingsTab data={data} updateData={updateData} showToast={showToast} />}
       </div>
 
       {/* Status Bar */}

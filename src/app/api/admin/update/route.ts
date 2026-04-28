@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { clearDataCache } from "@/lib/cache";
+import fs from "fs";
+import path from "path";
 
 const ABOUT_FIELDS = [
   "name_en", "name_zh",
@@ -168,6 +170,18 @@ export async function PUT(req: NextRequest) {
       const contentZh = validateHtmlContent(data.contentZh ?? data.content_zh);
       const contentEn = validateHtmlContent(data.contentEn ?? data.content_en);
 
+      // Debug: log received content
+      console.log("[PUT /api/admin/update] project:", {
+        id,
+        titleZh,
+        titleEn,
+        cover,
+        imageFolder,
+        images,
+        contentZh,
+        contentEn,
+      });
+
       const result = await prisma.project.upsert({
         where: { id },
         update: { categoryId, titleEn, titleZh, cover, imageFolder, link, sortOrder, images, contentZh, contentEn },
@@ -182,14 +196,16 @@ export async function PUT(req: NextRequest) {
       const titleEn = validateString(data.titleEn ?? data.title_en);
       const titleZh = validateString(data.titleZh ?? data.title_zh);
       const period = validateString(data.period, 100);
-      const detailFolder = validateString(data.detailFolder ?? data.detail_folder, 100) || id;
       const sortOrder = validateSortOrder(data.sortOrder ?? data.sort_order);
-      const contentZh = validateHtmlContent(data.contentZh);
-      const contentEn = validateHtmlContent(data.contentEn);
+      const contentZh = validateHtmlContent(data.contentZh ?? data.content_zh);
+      const contentEn = validateHtmlContent(data.contentEn ?? data.content_en);
+      const cover = validateUrl(data.cover);
+      const images = validateJsonArray(data.images);
+      const detailFolder = validateString(data.detailFolder ?? data.detail_folder, 100) || id;
       const result = await prisma.workExperience.upsert({
         where: { id },
-        update: { titleEn, titleZh, period, detailFolder, sortOrder, contentZh, contentEn },
-        create: { id, titleEn, titleZh, period, detailFolder, sortOrder, contentZh, contentEn },
+        update: { titleEn, titleZh, period, sortOrder, contentZh, contentEn, cover, images, detailFolder },
+        create: { id, titleEn, titleZh, period, sortOrder, contentZh, contentEn, cover, images, detailFolder },
       });
       clearDataCache();
       return NextResponse.json(result);
@@ -227,10 +243,20 @@ export async function DELETE(req: NextRequest) {
       clearDataCache();
       return NextResponse.json({ success: true });
     case "project":
+      // Delete associated image folder
+      const projectDir = path.join(process.cwd(), "public", "images", "projects", id);
+      if (fs.existsSync(projectDir)) {
+        fs.rmSync(projectDir, { recursive: true, force: true });
+      }
       await prisma.project.delete({ where: { id } });
       clearDataCache();
       return NextResponse.json({ success: true });
     case "work":
+      // Delete associated image folder (now under images/about/{id})
+      const workDir = path.join(process.cwd(), "public", "images", "about", id);
+      if (fs.existsSync(workDir)) {
+        fs.rmSync(workDir, { recursive: true, force: true });
+      }
       await prisma.workExperience.delete({ where: { id } });
       clearDataCache();
       return NextResponse.json({ success: true });

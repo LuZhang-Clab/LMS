@@ -17,7 +17,7 @@ interface TiptapEditorProps {
 }
 
 export function TiptapEditor({ initialHtml, onChange, imageFolder }: TiptapEditorProps) {
-  const [isUploading, setIsUploading] = useState(false);
+  const [uploadingCount, setUploadingCount] = useState(0);
   const [pendingImagePos, setPendingImagePos] = useState<{ from: number; to: number } | null>(null);
   const replaceFileRef = useRef<HTMLInputElement>(null);
 
@@ -30,27 +30,6 @@ export function TiptapEditor({ initialHtml, onChange, imageFolder }: TiptapEdito
         inline: false,
         allowBase64: false,
         HTMLAttributes: { class: "editor-image" },
-        parseHTML: (element) => {
-          const img = element.querySelector("img");
-          if (!img) return null;
-          return {
-            src: img.getAttribute("src") ?? "",
-            alt: img.getAttribute("alt") ?? "",
-            title: img.getAttribute("title") ?? "",
-          };
-        },
-        renderHTML: (attributes) => {
-          if (!attributes.src) return false;
-          return [
-            "img",
-            {
-              src: attributes.src,
-              alt: attributes.alt,
-              title: attributes.title,
-              class: "editor-image",
-            },
-          ];
-        },
       }),
       Link.configure({
         openOnClick: false,
@@ -82,7 +61,7 @@ export function TiptapEditor({ initialHtml, onChange, imageFolder }: TiptapEdito
   const handleImageUpload = useCallback(
     async (file: File) => {
       if (!file.type.startsWith("image/")) return;
-      setIsUploading(true);
+      setUploadingCount((c) => c + 1);
       try {
         const formData = new FormData();
         formData.append("file", file);
@@ -93,23 +72,24 @@ export function TiptapEditor({ initialHtml, onChange, imageFolder }: TiptapEdito
           const data = await res.json();
           if (data.url) {
             editor?.chain().focus().setImage({ src: data.url }).run();
+            editor?.chain().focus().setTextSelection(editor.state.selection.to + 1).run();
           }
         }
       } catch (e) {
         console.error("Image upload failed:", e);
       } finally {
-        setIsUploading(false);
+        setUploadingCount((c) => c - 1);
       }
     },
     [editor, imageFolder]
   );
 
   const handleImageFileInput = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
       const files = e.target.files;
       if (!files) return;
       for (let i = 0; i < files.length; i++) {
-        handleImageUpload(files[i]);
+        await handleImageUpload(files[i]);
       }
       e.target.value = "";
     },
@@ -201,7 +181,9 @@ export function TiptapEditor({ initialHtml, onChange, imageFolder }: TiptapEdito
           if (!editor.isEditable) return;
           const pos = editor.view.posAtDOM(img as HTMLElement, 0);
           if (pos < 0) return;
-          editor.view.dispatch(editor.state.tr.setSelection(editor.state.selection.constructor.near(editor.state.doc.resolve(pos))));
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const SelectionClass = editor.state.selection.constructor as any;
+          editor.view.dispatch(editor.state.tr.setSelection(SelectionClass.near(editor.state.doc.resolve(pos))));
           setPendingImagePos({ from: pos, to: pos + 1 });
           replaceFileRef.current?.click();
         });
@@ -219,7 +201,7 @@ export function TiptapEditor({ initialHtml, onChange, imageFolder }: TiptapEdito
       if (!files || !editor || !pendingImagePos) return;
       const file = files[0];
       if (!file.type.startsWith("image/")) { e.target.value = ""; setPendingImagePos(null); return; }
-      setIsUploading(true);
+      setUploadingCount((c) => c + 1);
       try {
         const formData = new FormData();
         formData.append("file", file);
@@ -239,7 +221,7 @@ export function TiptapEditor({ initialHtml, onChange, imageFolder }: TiptapEdito
       } catch (err) {
         console.error("Replace image failed:", err);
       } finally {
-        setIsUploading(false);
+        setUploadingCount((c) => Math.max(0, c - 1));
         setPendingImagePos(null);
         e.target.value = "";
       }
@@ -334,6 +316,7 @@ export function TiptapEditor({ initialHtml, onChange, imageFolder }: TiptapEdito
         {editor.isActive("link") && (
           <ToolbarBtn
             onClick={() => editor.chain().focus().unsetLink().run()}
+            active={true}
             title="移除链接"
           >
             ✂
@@ -366,20 +349,20 @@ export function TiptapEditor({ initialHtml, onChange, imageFolder }: TiptapEdito
             padding: "4px 8px",
             borderRadius: "3px",
             background: "#333",
-            color: isUploading ? "#d4af37" : "#e0e0e0",
+            color: uploadingCount > 0 ? "#d4af37" : "#e0e0e0",
             fontSize: "0.72rem",
-            cursor: isUploading ? "not-allowed" : "pointer",
+            cursor: uploadingCount > 0 ? "not-allowed" : "pointer",
             border: "1px solid #444",
           }}
         >
-          {isUploading ? "上传中..." : "📷 图片"}
+          {uploadingCount > 0 ? `上传中(${uploadingCount})...` : "📷 图片"}
           <input
             type="file"
             accept="image/*"
             multiple
             onChange={handleImageFileInput}
             style={{ display: "none" }}
-            disabled={isUploading}
+            disabled={uploadingCount > 0}
           />
         </label>
 

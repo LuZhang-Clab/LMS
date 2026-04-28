@@ -50,12 +50,25 @@ export default async function AboutPage() {
         awardsEn: "",
       };
 
+  const workExpData = workExperience.map((w) => ({
+    id: w.id,
+    titleEn: w.titleEn,
+    titleZh: w.titleZh,
+    period: w.period,
+    detailFolder: w.detailFolder,
+    images: (() => { try { return JSON.parse(w.images); } catch { return []; } })(),
+    cover: w.cover,
+    contentZh: w.contentZh,
+    contentEn: w.contentEn,
+    sortOrder: w.sortOrder,
+  }));
+
   return (
     <>
       <Nav />
       <AboutClient
         about={aboutData}
-        workExperience={workExperience}
+        workExperience={workExpData}
         services={services}
         links={links}
       />

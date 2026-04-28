@@ -1,11 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
 import Nav from "@/components/Nav";
-import type { WorkExperience, Service } from "@/types";
+import type { WorkExperience, Service, ContentBlock } from "@/types";
 import type { SiteLink } from "@/types";
-import type { ContentBlock } from "@/types";
 import { useLocale } from "@/context/LocaleProvider";
 // CursorProvider handles init at layout level
 
@@ -14,22 +12,6 @@ import { useLocale } from "@/context/LocaleProvider";
 function t(obj: Record<string, unknown> | null | undefined, field: string, lang: string): string {
   if (!obj) return "";
   return ((obj[`${field}_${lang}`] as string) || (obj[`${field}_en`] as string) || "") as string;
-}
-
-function resolveCover(cover: string | null, imageFolder: string | null): string {
-  if (cover) {
-    if (cover.startsWith("http")) return cover;
-    if (cover.startsWith("/")) return cover;
-    return `/images/projects/${imageFolder || "default"}/${cover}`;
-  }
-  if (imageFolder) return `/images/projects/${imageFolder}/cover.jpg`;
-  return "";
-}
-
-function resolveImage(src: string, folder: string): string {
-  if (src.startsWith("http")) return src;
-  if (src.startsWith("/")) return src;
-  return `/images/projects/${folder || "default"}/${src}`;
 }
 
 // ─── Contact Icons ────────────────────────────────────────────────────────────
@@ -57,12 +39,6 @@ function ContactIcon({ platform }: { platform: string }) {
 
 // ─── Work Exp Modal ───────────────────────────────────────────────────────────
 
-function resolveWorkImage(src: string, detailFolder: string, id: string): string {
-  if (src.startsWith("http")) return src;
-  if (src.startsWith("/")) return src;
-  return `/images/work/${detailFolder || id}/${src}`;
-}
-
 function WorkExpModal({
   exp,
   onClose,
@@ -75,11 +51,30 @@ function WorkExpModal({
   const { locale } = useLocale();
   if (!exp) return null;
   const isEn = locale === "en";
-  const blocks: ContentBlock[] = isEn
-    ? (exp.contentEn as ContentBlock[])
-    : (exp.contentZh as ContentBlock[]);
+  const rawContent = isEn ? exp.contentEn : exp.contentZh;
 
-  const expImages: string[] = Array.isArray(exp.images) ? exp.images : [];
+  let contentHtml: React.ReactNode = null;
+  if (typeof rawContent === "string" && rawContent.trim()) {
+    // HTML string from Tiptap — render directly, wire image clicks
+    contentHtml = (
+      <div
+        className="modal-html-content"
+        dangerouslySetInnerHTML={{ __html: rawContent }}
+        onClick={(e) => {
+          const img = (e.target as HTMLElement).closest("img");
+          if (img && img.src) onImageClick(img.src);
+        }}
+      />
+    );
+  } else if (Array.isArray(rawContent)) {
+    contentHtml = (
+      <div className="modal-text" style={{ whiteSpace: "pre-wrap" }}>
+        {(rawContent as ContentBlock[]).map((block, i) => (
+          <p key={i}>{"text" in block ? block.text : ""}</p>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div
@@ -96,70 +91,7 @@ function WorkExpModal({
         <p className="modal-text" style={{ marginBottom: "1.5rem", color: "var(--text-muted)" }}>
           {exp.period}
         </p>
-        {expImages.length > 0 && (
-          <div className="modal-images">
-            {expImages.map((img, i) => (
-              <img
-                key={i}
-                src={resolveWorkImage(img, exp.detailFolder || "", exp.id)}
-                alt=""
-                loading="lazy"
-                onClick={() => onImageClick(resolveWorkImage(img, exp.detailFolder || "", exp.id))}
-                onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = "none";
-                }}
-              />
-            ))}
-          </div>
-        )}
-        {blocks.map((block, i) => {
-          switch (block.type) {
-            case "heading":
-              return (
-                <h3 key={i} className="modal-heading">
-                  {block.text}
-                </h3>
-              );
-            case "text":
-              return (
-                <p key={i} className="modal-text">
-                  {block.text}
-                </p>
-              );
-            case "images":
-              return (
-                <div key={i} className="modal-images">
-                  {block.files.map((file, j) => (
-                    <img
-                      key={j}
-                      src={resolveImage(file, exp.detailFolder || "")}
-                      alt=""
-                      loading="lazy"
-                      onClick={() => onImageClick(resolveImage(file, exp.detailFolder || ""))}
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = "none";
-                      }}
-                    />
-                  ))}
-                </div>
-              );
-            case "link":
-              return (
-                <div key={i} className="modal-link-wrap">
-                  <a
-                    href={block.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="modal-link"
-                  >
-                    {block.text} →
-                  </a>
-                </div>
-              );
-            default:
-              return null;
-          }
-        })}
+        {contentHtml}
       </div>
     </div>
   );
@@ -275,11 +207,10 @@ export default function AboutClient({
           <div className={`section-content${openSections.has("work") ? " open" : ""}`}>
             <div className="work-exp-scroll">
               {workExperience.map((exp, idx) => {
-                // Use uploaded cover image, fallback to index-based default
                 const cover = exp.cover
                   ? exp.cover.startsWith("http") || exp.cover.startsWith("/")
                     ? exp.cover
-                    : `/images/work/${exp.detailFolder || exp.id}/${exp.cover}`
+                    : `/images/about/${exp.id}/${exp.cover}`
                   : `/images/about/${idx + 1}.jpg`;
                 return (
                   <div
@@ -292,14 +223,6 @@ export default function AboutClient({
                         src={cover}
                         alt={isEn ? exp.titleEn : exp.titleZh}
                         loading="lazy"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setLightboxSrc(cover);
-                        }}
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = `/images/about/${idx + 1}.jpg`;
-                          (e.target as HTMLImageElement).onerror = null;
-                        }}
                       />
                     </div>
                     <div className="card-title">
