@@ -183,7 +183,7 @@ body.admin-mode {
 
 /* ==================== LAYOUT ==================== */
 .page-container {
-  max-width: 1400px;
+  max-width: 1920px;
   margin: 0 auto;
   padding: 0 5rem;
 }
@@ -352,7 +352,7 @@ body.admin-mode {
 /* ==================== HOME PAGE ==================== */
 .home-hero {
   padding: 1.8rem 5rem 1.2rem;
-  max-width: 1400px;
+  max-width: 1920px;
   margin: 0 auto;
 }
 
@@ -384,7 +384,7 @@ body.admin-mode {
 /* ==================== CATEGORIES ==================== */
 .categories-section {
   padding: 0.5rem 5rem 4rem;
-  max-width: 1400px;
+  max-width: 1920px;
   margin: 0 auto;
 }
 
@@ -796,7 +796,7 @@ body.admin-mode {
   display: flex;
   gap: 3rem;
   align-items: flex-start;
-  max-width: 1400px;
+  max-width: 1920px;
   margin: 0 auto;
 }
 
@@ -864,7 +864,7 @@ body.admin-mode {
 
 .about-sections {
   padding: 1rem 5rem 4rem;
-  max-width: 1400px;
+  max-width: 1920px;
   margin: 0 auto;
 }
 
@@ -1135,7 +1135,7 @@ body.admin-mode {
 /* ==================== FOOTER ==================== */
 .site-footer {
   padding: 2rem 5rem;
-  max-width: 1400px;
+  max-width: 1920px;
   margin: 0 auto;
   border-top: 1px solid var(--border);
 }
@@ -1143,7 +1143,7 @@ body.admin-mode {
 /* ==================== PROJECT DETAIL PAGE (next-app) ==================== */
 .project-detail-back {
   padding: 1.4rem 5rem 0;
-  max-width: 1400px;
+  max-width: 1920px;
   margin: 0 auto;
 }
 
@@ -1166,7 +1166,7 @@ body.admin-mode {
 
 .project-detail-content {
   padding: 2rem 5rem 5rem;
-  max-width: 1400px;
+  max-width: 1920px;
   margin: 0 auto;
 }
 
