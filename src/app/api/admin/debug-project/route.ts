@@ -9,24 +9,52 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const projectId = searchParams.get("id");
 
-  if (!projectId) {
-    return NextResponse.json({ error: "id required" }, { status: 400 });
+  if (projectId) {
+    const project = await prisma.project.findUnique({ where: { id: projectId } });
+    if (!project) {
+      return NextResponse.json({ error: "not found" }, { status: 404 });
+    }
+    return NextResponse.json({
+      id: project.id,
+      titleZh: project.titleZh,
+      titleEn: project.titleEn,
+      contentZh_length: project.contentZh?.length ?? 0,
+      contentZh_preview: project.contentZh?.slice(0, 200),
+      contentEn_length: project.contentEn?.length ?? 0,
+      contentEn_preview: project.contentEn?.slice(0, 200),
+      cover: project.cover,
+      imageFolder: project.imageFolder,
+    });
   }
 
-  const project = await prisma.project.findUnique({ where: { id: projectId } });
-  if (!project) {
-    return NextResponse.json({ error: "not found" }, { status: 404 });
-  }
+  // Return all projects
+  const projects = await prisma.project.findMany({
+    orderBy: { sortOrder: "asc" },
+    select: {
+      id: true,
+      titleZh: true,
+      titleEn: true,
+      contentZh: true,
+      contentEn: true,
+      cover: true,
+      imageFolder: true,
+      categoryId: true,
+    },
+  });
 
   return NextResponse.json({
-    id: project.id,
-    titleZh: project.titleZh,
-    titleEn: project.titleEn,
-    contentZh_length: project.contentZh?.length ?? 0,
-    contentZh_preview: project.contentZh?.slice(0, 200),
-    contentEn_length: project.contentEn?.length ?? 0,
-    contentEn_preview: project.contentEn?.slice(0, 200),
-    cover: project.cover,
-    imageFolder: project.imageFolder,
+    total: projects.length,
+    projects: projects.map((p) => ({
+      id: p.id,
+      titleZh: p.titleZh,
+      titleEn: p.titleEn,
+      contentZh_length: p.contentZh?.length ?? 0,
+      contentZh_preview: p.contentZh?.slice(0, 200),
+      contentEn_length: p.contentEn?.length ?? 0,
+      contentEn_preview: p.contentEn?.slice(0, 200),
+      cover: p.cover,
+      imageFolder: p.imageFolder,
+      categoryId: p.categoryId,
+    })),
   });
 }
