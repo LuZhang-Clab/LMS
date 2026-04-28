@@ -1,16 +1,12 @@
 import AboutClient from "@/components/AboutClient";
-import Nav from "@/components/Nav";
 import { prisma } from "@/lib/db";
 import type { Metadata } from "next";
-import { getServerLocale } from "@/context/LocaleContext";
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: "About — LUMOS" };
 }
 
 export default async function AboutPage() {
-  const locale = await getServerLocale();
-
   const [about, workExperience, services, links] = await Promise.all([
     prisma.about.findFirst(),
     prisma.workExperience.findMany({ orderBy: { sortOrder: "asc" } }),
@@ -63,15 +59,10 @@ export default async function AboutPage() {
     sortOrder: w.sortOrder,
   }));
 
-  return (
-    <>
-      <Nav />
-      <AboutClient
-        about={aboutData}
-        workExperience={workExpData}
-        services={services}
-        links={links}
-      />
-    </>
-  );
+  return <AboutClient
+    about={aboutData}
+    workExperience={workExpData}
+    services={services}
+    links={links}
+  />;
 }

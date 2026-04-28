@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { LocaleProvider } from "@/context/LocaleProvider";
 import CursorProvider from "@/components/CursorProvider";
+import SplashProvider from "@/components/SplashProvider";
 
 export const metadata: Metadata = {
   title: "LUMOS CREATIVE",
@@ -36,11 +37,12 @@ export default function RootLayout({
             width: "100%",
             height: "100%",
             pointerEvents: "none",
-            zIndex: 9999,
+            zIndex: 99999,
           }}
         />
         <LocaleProvider>
           <CursorProvider />
+          <SplashProvider />
           {children}
         </LocaleProvider>
       </body>

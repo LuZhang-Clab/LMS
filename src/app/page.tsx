@@ -1,11 +1,7 @@
-import Nav from "@/components/Nav";
 import HomeClient from "@/components/HomeClient";
 import { prisma } from "@/lib/db";
-import { getServerLocale } from "@/context/LocaleContext";
 
 export default async function HomePage() {
-  const locale = await getServerLocale();
-
   const [about, categories] = await Promise.all([
     prisma.about.findFirst(),
     prisma.category.findMany({
@@ -50,10 +46,5 @@ export default async function HomePage() {
         photo: "",
       };
 
-  return (
-    <>
-      <Nav />
-      <HomeClient categories={formatted} about={aboutData} />
-    </>
-  );
+  return <HomeClient categories={formatted} about={aboutData} />;
 }
