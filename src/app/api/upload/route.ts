@@ -55,7 +55,7 @@ export async function POST(request: Request) {
       contentType: (file as File).type,
     });
 
-    return NextResponse.json({ url: blob.url });
+    return NextResponse.json({ url: blob.downloadUrl });
   } catch (error) {
     console.error("[POST /api/upload]", error);
     const message = error instanceof Error ? error.message : "Upload failed";
