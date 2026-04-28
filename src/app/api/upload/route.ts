@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { put } from "@vercel/blob";
 import path from "path";
 
+export const runtime = "nodejs";
+
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml"];
 const MAX_SIZE = 10 * 1024 * 1024; // 10MB
 
@@ -47,13 +49,16 @@ export async function POST(request: Request) {
     }
 
     // Upload to Vercel Blob
-    const blob = await put(blobPath, file, {
+    const arrayBuffer = await (file as File).arrayBuffer();
+    const blob = await put(blobPath, arrayBuffer, {
       access: "public",
+      contentType: (file as File).type,
     });
 
     return NextResponse.json({ url: blob.url });
   } catch (error) {
     console.error("[POST /api/upload]", error);
-    return NextResponse.json({ error: "Upload failed" }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Upload failed";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
