@@ -38,12 +38,20 @@ function normalizeContentUrls(html: string, folder: string): string {
 
 // Strip absolute image URL prefix from HTML before saving to DB,
 // so stored data stays consistent (relative filenames only).
+// Also preserves blob URLs and external URLs as-is.
 function denormalizeContentUrls(html: string, folder: string): string {
   if (!html || !folder) return html;
   const prefix = getImagePrefix(folder);
   return html.replace(
     /<img([^>]+)src=(["'])(https?:\/\/[^"']+)\2/gi,
     (_, attrs, quote, src) => {
+      // Preserve blob URLs and other external URLs unchanged
+      if (src.startsWith("https://") && src.includes(".blob.vercel-storage.com")) {
+        return `<img${attrs}src=${quote}${src}${quote}`;
+      }
+      if (src.startsWith("http://") || src.startsWith("https://")) {
+        return `<img${attrs}src=${quote}${src}${quote}`;
+      }
       if (src.startsWith(prefix + "/")) {
         const rel = src.slice(prefix.length + 1);
         return `<img${attrs}src=${quote}${rel}${quote}`;
@@ -1469,7 +1477,16 @@ function WorkExpItem({
     if (!html) return html;
     return html.replace(
       /<img([^>]+)src=(["'])(https?:\/\/[^"']+)\2/gi,
-      (_, attrs, quote, src) => `<img${attrs}src=${quote}${src}${quote}`
+      (_, attrs, quote, src) => {
+        // Preserve blob URLs and other external URLs unchanged
+        if (src.startsWith("https://") && src.includes(".blob.vercel-storage.com")) {
+          return `<img${attrs}src=${quote}${src}${quote}`;
+        }
+        if (src.startsWith("http://") || src.startsWith("https://")) {
+          return `<img${attrs}src=${quote}${src}${quote}`;
+        }
+        return `<img${attrs}src=${quote}${src}${quote}`;
+      }
     );
   };
 
