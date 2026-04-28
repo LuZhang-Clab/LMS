@@ -25,6 +25,8 @@ export function TiptapEditor({ initialHtml, onChange, imageFolder }: TiptapEdito
     extensions: [
       StarterKit.configure({
         heading: { levels: [2, 3] },
+        link: false,
+        underline: false,
       }),
       Image.configure({
         inline: false,

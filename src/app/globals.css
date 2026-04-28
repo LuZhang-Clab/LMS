@@ -36,7 +36,7 @@
   box-sizing: border-box;
 }
 
-html {
+html[data-scroll-behavior="smooth"] {
   scroll-behavior: smooth;
 }
 
@@ -249,7 +249,7 @@ body.admin-mode {
 
 #splash.fade-out {
   opacity: 0;
-  transition: opacity 1.2s ease;
+  transition: opacity 0.8s ease;
   pointer-events: none;
 }
 

@@ -63,8 +63,9 @@ function WorkExpModal({
   onClose: () => void;
   onImageClick: (src: string) => void;
 }) {
-  const { locale } = useLocale();
   if (!exp) return null;
+
+  const { locale } = useLocale();
   const isEn = locale === "en";
   const rawContent = isEn ? exp.contentEn : exp.contentZh;
 
