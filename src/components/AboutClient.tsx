@@ -39,12 +39,27 @@ function ContactIcon({ platform }: { platform: string }) {
 
 // ─── Work Exp Modal ───────────────────────────────────────────────────────────
 
+function resolveHtmlImages(html: string, folder: string): string {
+  if (!html || !folder) return html;
+  return html.replace(
+    /<img([^>]+)src=(["'])(?!(?:https?:\/\/|data:))([^"']+)\2/gi,
+    (_, attrs, quote, src) => {
+      const trimmed = src.trim();
+      if (!trimmed || trimmed.startsWith("/")) return `<img${attrs}src=${quote}${trimmed}${quote}`;
+      if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return `<img${attrs}src=${quote}${trimmed}${quote}`;
+      return `<img${attrs}src=${quote}/images/about/${folder}/${trimmed}${quote}`;
+    }
+  );
+}
+
 function WorkExpModal({
   exp,
+  imageFolder,
   onClose,
   onImageClick,
 }: {
   exp: WorkExperience | null;
+  imageFolder: string;
   onClose: () => void;
   onImageClick: (src: string) => void;
 }) {
@@ -55,11 +70,11 @@ function WorkExpModal({
 
   let contentHtml: React.ReactNode = null;
   if (typeof rawContent === "string" && rawContent.trim()) {
-    // HTML string from Tiptap — render directly, wire image clicks
+    const resolved = resolveHtmlImages(rawContent, imageFolder || exp.detailFolder || "");
     contentHtml = (
       <div
         className="modal-html-content"
-        dangerouslySetInnerHTML={{ __html: rawContent }}
+        dangerouslySetInnerHTML={{ __html: resolved }}
         onClick={(e) => {
           const img = (e.target as HTMLElement).closest("img");
           if (img && img.src) onImageClick(img.src);
@@ -294,7 +309,12 @@ export default function AboutClient({
       </div>
 
       {/* Work Exp Modal */}
-      <WorkExpModal exp={activeExp} onClose={() => setActiveExp(null)} onImageClick={(src) => setLightboxSrc(src)} />
+      <WorkExpModal
+        exp={activeExp}
+        imageFolder={activeExp?.detailFolder || ""}
+        onClose={() => setActiveExp(null)}
+        onImageClick={(src) => setLightboxSrc(src)}
+      />
 
       {/* Lightbox */}
       {lightboxSrc && (

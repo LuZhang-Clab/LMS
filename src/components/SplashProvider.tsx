@@ -103,6 +103,7 @@ export default function SplashProvider() {
 
   useEffect(() => {
     if (splashPlayed) return;
+    if (window.location.pathname.startsWith("/admin")) return;
     splashPlayed = true;
     setShowSplash(true);
 

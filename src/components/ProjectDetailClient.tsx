@@ -1,18 +1,29 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
 import Link from "next/link";
 import Nav from "@/components/Nav";
 import { useLocale } from "@/context/LocaleProvider";
 
 function resolveImage(src: string, folder: string): string {
   if (!src) return "";
-  // Already a full URL — return as-is
   if (src.startsWith("http://") || src.startsWith("https://")) return src;
-  // Absolute path — return as-is
   if (src.startsWith("/")) return src;
-  // Relative path (e.g. "file.jpg") — prepend the project folder
   return `/images/projects/${folder || "default"}/${src}`;
+}
+
+// Replace relative image src in HTML with absolute URLs before rendering,
+// so the browser fetches correct paths immediately (avoids DOM timing issues).
+function resolveHtmlImages(html: string, folder: string): string {
+  if (!html || !folder) return html;
+  return html.replace(
+    /<img([^>]+)src=(["'])(?!(?:https?:\/\/|data:))([^"']+)\2/gi,
+    (_, attrs, quote, src) => {
+      const trimmed = src.trim();
+      if (!trimmed || trimmed.startsWith("/")) return `<img${attrs}src=${quote}${trimmed}${quote}`;
+      return `<img${attrs}src=${quote}${resolveImage(trimmed, folder)}${quote}`;
+    }
+  );
 }
 
 function Lightbox({ src, onClose }: { src: string | null; onClose: () => void }) {
@@ -55,15 +66,8 @@ export default function ProjectDetailClient({
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
-  // Fix image src paths after HTML is rendered.
-  useEffect(() => {
-    const el = contentRef.current;
-    if (!el) return;
-    el.querySelectorAll<HTMLImageElement>("img").forEach((img) => {
-      const raw = img.getAttribute("src") ?? img.src;
-      img.src = resolveImage(raw, imageFolder);
-    });
-  }, [contentHtml, imageFolder]);
+  // Resolve image paths in content HTML before rendering
+  const resolvedHtml = resolveHtmlImages(contentHtml, imageFolder);
 
   return (
     <>
@@ -96,11 +100,11 @@ export default function ProjectDetailClient({
           )}
 
           <div className="project-detail-body">
-            {contentHtml ? (
+            {resolvedHtml ? (
               <div
                 ref={contentRef}
                 className="project-detail-html"
-                dangerouslySetInnerHTML={{ __html: contentHtml }}
+                dangerouslySetInnerHTML={{ __html: resolvedHtml }}
               />
             ) : null}
 
