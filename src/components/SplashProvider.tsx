@@ -102,6 +102,48 @@ function AnimatedLetter({ l, delay, strokeAnimDur, fillStart }: LetterProps) {
   );
 }
 
+// ─── Subtitle line (Chinese) ────────────────────────────────────────────────────
+interface SubLineProps {
+  delay: number;
+  text: string;
+}
+
+function AnimatedSubLine({ delay, text }: SubLineProps) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.animate(
+      [
+        { opacity: 0, transform: "translateY(5px)", filter: "brightness(1)" },
+        { opacity: 1, transform: "translateY(0)",   filter: "brightness(1.8) drop-shadow(0 0 12px rgba(255,255,255,0.9))" },
+        { opacity: 1, transform: "translateY(0)",   filter: "brightness(1.3) drop-shadow(0 0 7px rgba(255,255,255,0.65))" },
+      ],
+      { delay: delay * 1000, duration: 0.8 * 1000, fill: "forwards", easing: "ease" }
+    );
+  }, [delay]);
+
+  return (
+    <div
+      ref={ref}
+      style={{
+        fontFamily: "var(--font-noto-serif), \"Noto Serif SC\", serif",
+        fontSize: "1.6rem",
+        fontWeight: 400,
+        letterSpacing: "0.5em",
+        color: "#ffffff",
+        marginTop: "1.6rem",
+        opacity: 0,
+        whiteSpace: "nowrap",
+        textAlign: "center",
+      }}
+    >
+      {text}
+    </div>
+  );
+}
+
 // ─── Component ─────────────────────────────────────────────────────────────────
 
 export default function SplashProvider() {
@@ -123,7 +165,7 @@ export default function SplashProvider() {
     const fadeTimer = setTimeout(() => {
       container.classList.add("fade-out");
       setTimeout(() => { container.style.display = "none"; }, 700);
-    }, 10000);
+    }, 7500);
 
     return () => { clearTimeout(fadeTimer); };
   }, [isExcluded]);
@@ -144,24 +186,6 @@ export default function SplashProvider() {
           overflow: hidden;
         }
 
-        .splash-sub {
-          font-family: var(--font-noto-serif), "Noto Serif SC", serif;
-          font-size: 1.6rem;
-          font-weight: 400;
-          letter-spacing: 0.5em;
-          color: rgba(255,255,255,0.55);
-          margin-top: 1.6rem;
-          opacity: 0;
-          animation: sub-in 0.8s ease forwards 5.5s;
-          white-space: nowrap;
-          text-align: center;
-        }
-
-        @keyframes sub-in {
-          from { opacity: 0; transform: translateY(5px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-
         #splash.fade-out {
           opacity: 0;
           transition: opacity 0.7s ease;
@@ -170,13 +194,6 @@ export default function SplashProvider() {
       `}</style>
 
       <div className="splash-svg-wrap">
-        <style>{`
-          .splash-svg-wrap {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-          }
-        `}</style>
         {/* LUMOS */}
         <svg
           className="splash-word s-lumos"
@@ -202,7 +219,7 @@ export default function SplashProvider() {
           viewBox="-220 0 440 70"
           xmlns="http://www.w3.org/2000/svg"
           aria-label="CREATIVE"
-          style={{ width: "auto", height: "90px", opacity: 0.7 }}
+          style={{ width: "auto", height: "90px" }}
         >
           {CREATIVE.map((l, i) => (
             <AnimatedLetter
@@ -215,7 +232,7 @@ export default function SplashProvider() {
           ))}
         </svg>
 
-        <div className="splash-sub">里面是&nbsp;·&nbsp;创意事务</div>
+        <AnimatedSubLine delay={5.5} text="里面是 · 创意事务" />
       </div>
     </div>
   );

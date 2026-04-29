@@ -577,6 +577,214 @@ function ImageUploader({
   );
 }
 
+// ============ Cover Picker ============
+function CoverPicker({
+  coverImage,
+  coverSource,
+  localContentZh,
+  localContentEn,
+  imageFolder,
+  onSetCover,
+  onToast,
+}: {
+  coverImage: string;
+  coverSource: "manual" | "auto";
+  localContentZh: string;
+  localContentEn: string;
+  imageFolder: string;
+  onSetCover: (src: string, source: "manual" | "auto") => void;
+  onToast?: (msg: string, type?: string) => void;
+}) {
+  const [uploading, setUploading] = useState(false);
+
+  const extractAllImages = (html: string): string[] => {
+    const matches = html.matchAll(/src\s*=\s*(["'])([^"']+)\1/gi);
+    const images: string[] = [];
+    for (const match of matches) {
+      const src = match[2].trim();
+      if (src && !images.includes(src)) images.push(src);
+    }
+    return images;
+  };
+
+  const makeAbsolute = (src: string) => {
+    if (!src) return "";
+    if (src.startsWith("http://") || src.startsWith("https://") || src.startsWith("/")) return src;
+    const prefix = getImagePrefix(imageFolder);
+    return `${prefix}/${src}`;
+  };
+
+  const contentImages = [
+    ...extractAllImages(localContentZh),
+    ...extractAllImages(localContentEn),
+  ];
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("folder", imageFolder || "projects");
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      if (!res.ok) throw new Error("upload failed");
+      const data = await res.json();
+      if (data.url) onSetCover(data.url, "manual");
+    } catch {
+      onToast?.("封面图上传失败", "error");
+    } finally {
+      setUploading(false);
+    }
+    e.target.value = "";
+  };
+
+  const handlePickFromContent = (src: string) => {
+    onSetCover(src, "manual");
+  };
+
+  const handleSetAuto = () => {
+    onSetCover("", "auto");
+  };
+
+  const preview = makeAbsolute(coverImage);
+  const isAuto = coverSource === "auto";
+  const autoCover = (() => {
+    const zh = localContentZh.match(/src\s*=\s*(["'])([^"']+)\1/i);
+    const en = localContentEn.match(/src\s*=\s*(["'])([^"']+)\1/i);
+    return (zh ? zh[2] : en ? en[2] : "") as string;
+  })();
+  const autoPreview = makeAbsolute(autoCover);
+
+  return (
+    <div style={{ marginBottom: "1.2rem" }}>
+      <label style={styles.label}>封面图 · COVER</label>
+
+      <div style={{ marginBottom: "0.5rem" }}>
+        <img
+          src={isAuto && autoPreview ? autoPreview : preview}
+          alt="封面预览"
+          style={{
+            width: "120px",
+            height: "80px",
+            objectFit: "cover",
+            borderRadius: "4px",
+            border: "1px solid #333",
+            background: "#111",
+            display: "block",
+          }}
+        />
+        {isAuto && (
+          <span style={{ fontSize: "0.7rem", color: "#555", marginTop: "2px", display: "block" }}>
+            自动提取（尚未手动设置）
+          </span>
+        )}
+      </div>
+
+      <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
+        <label
+          style={{
+            ...styles.btn as React.CSSProperties,
+            background: "#333",
+            color: "#ccc",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "0.4rem",
+            cursor: uploading ? "not-allowed" : "pointer",
+            opacity: uploading ? 0.6 : 1,
+          }}
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="17 8 12 3 7 8" />
+            <line x1="12" y1="3" x2="12" y2="15" />
+          </svg>
+          {uploading ? "上传中..." : "上传封面"}
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleUpload}
+            style={{ display: "none" }}
+            disabled={uploading}
+          />
+        </label>
+
+        {coverSource === "auto" && autoCover && (
+          <button
+            onClick={handleSetAuto}
+            style={{
+              ...styles.btn as React.CSSProperties,
+              background: "transparent",
+              border: "1px solid #444",
+              color: "#666",
+              fontSize: "0.75rem",
+            }}
+          >
+            保持自动
+          </button>
+        )}
+      </div>
+
+      {contentImages.length > 0 && (
+        <div style={{ marginTop: "0.6rem" }}>
+          <span style={{ fontSize: "0.7rem", color: "#555", marginBottom: "0.3rem", display: "block" }}>
+            或从正文中选择：
+          </span>
+          <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
+            {contentImages.map((src, i) => {
+              const abs = makeAbsolute(src);
+              const isSelected =
+                coverSource === "manual" && coverImage === src;
+              return (
+                <div
+                  key={i}
+                  onClick={() => handlePickFromContent(src)}
+                  title="设为封面"
+                  style={{
+                    position: "relative",
+                    cursor: "pointer",
+                    borderRadius: "3px",
+                    border: isSelected ? "2px solid #d4af37" : "2px solid transparent",
+                    overflow: "visible",
+                  }}
+                >
+                  <img
+                    src={abs}
+                    alt={`图片${i + 1}`}
+                    style={{
+                      width: "56px",
+                      height: "40px",
+                      objectFit: "cover",
+                      borderRadius: "3px",
+                      display: "block",
+                    }}
+                  />
+                  {isSelected && (
+                    <span
+                      style={{
+                        position: "absolute",
+                        bottom: "-18px",
+                        left: "50%",
+                        transform: "translateX(-50%)",
+                        fontSize: "0.6rem",
+                        color: "#d4af37",
+                        whiteSpace: "nowrap",
+                        fontWeight: 600,
+                      }}
+                    >
+                      封面
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ============ Section Header (shared visual separator) ============
 function SectionHeader({ label }: { label: string }) {
   return (
@@ -629,15 +837,17 @@ function ProjectItem({
   const [localContentZh, setLocalContentZh] = useState(proj.content_zh || "");
   const [localContentEn, setLocalContentEn] = useState(proj.content_en || "");
 
+  const [coverImage, setCoverImage] = useState(proj.cover || "");
+  const [coverSource, setCoverSource] = useState<"manual" | "auto">(
+    proj.cover ? "manual" : "auto"
+  );
+
   const extractFirstImage = (html: string): string => {
-    // Support URLs with query strings (?token=abc&ver=1)
     const match = html.match(/src\s*=\s*(["'])([^"']+)\1/i);
     return match ? match[2] : "";
   };
 
   const extractAllImages = (html: string): string[] => {
-    // Support URLs with query strings (?token=abc&ver=1) by matching src value
-    // across the entire attribute, not stopping at & or ?
     const matches = html.matchAll(/src\s*=\s*(["'])([^"']+)\1/gi);
     const images: string[] = [];
     for (const match of matches) {
@@ -649,26 +859,30 @@ function ProjectItem({
     return images;
   };
 
+  const getDefaultCover = (): string => {
+    const zh = extractFirstImage(localContentZh);
+    const en = extractFirstImage(localContentEn);
+    return zh || en || "";
+  };
+
   const handleContentChange = (field: "content_zh" | "content_en", html: string) => {
-    // Strip absolute image prefix so stored data stays in relative-path form
     const normalized = denormalizeContentUrls(html, proj.imageFolder);
     if (field === "content_zh") setLocalContentZh(normalized);
     else setLocalContentEn(normalized);
     onUpdate(field, normalized);
-    if (!proj.cover || proj.cover === "") {
-      // Extract cover from normalized (relative-path) HTML to stay consistent with DB
-      const firstImg = extractFirstImage(normalized);
-      if (firstImg) onUpdate("cover", firstImg);
-    }
   };
 
   const handleSave = async () => {
     setSaveStatus("saving");
     try {
-      // Extract all images from content_zh and content_en
       const zhImages = extractAllImages(localContentZh);
       const enImages = extractAllImages(localContentEn);
       const allImages = [...new Set([...zhImages, ...enImages])];
+
+      const finalCover =
+        coverSource === "manual" && coverImage
+          ? coverImage
+          : getDefaultCover();
 
       const res = await fetch("/api/admin/update", {
         method: "PUT",
@@ -679,19 +893,20 @@ function ProjectItem({
           categoryId,
           title_en: proj.title_en,
           title_zh: proj.title_zh,
-          cover: proj.cover || extractFirstImage(localContentZh) || extractFirstImage(localContentEn),
+          cover: finalCover,
           imageFolder: proj.imageFolder,
           link: proj.link,
           images: allImages,
-          // denormalize converts absolute paths back to relative so DB stores consistent relative paths
           content_zh: denormalizeContentUrls(localContentZh, proj.imageFolder),
           content_en: denormalizeContentUrls(localContentEn, proj.imageFolder),
         }),
       });
       if (res.ok) {
-        // Update local state with extracted images
         onUpdate("images", allImages);
-        onUpdate("cover", proj.cover || extractFirstImage(localContentZh) || extractFirstImage(localContentEn));
+        onUpdate("cover", finalCover);
+        if (coverSource === "manual") {
+          setCoverImage(finalCover);
+        }
         setSaveStatus("saved");
         setTimeout(() => setSaveStatus("idle"), 2000);
         onToast?.("项目已保存", "success");
@@ -838,6 +1053,20 @@ function ProjectItem({
               placeholder="https://..."
             />
           </div>
+
+          {/* Cover picker */}
+          <CoverPicker
+            coverImage={coverImage}
+            coverSource={coverSource}
+            localContentZh={localContentZh}
+            localContentEn={localContentEn}
+            imageFolder={proj.imageFolder}
+            onSetCover={(src, source) => {
+              setCoverImage(src);
+              setCoverSource(source);
+            }}
+            onToast={onToast}
+          />
 
           {/* Content section */}
           <SectionHeader label="详情内容 · DETAILS" />
