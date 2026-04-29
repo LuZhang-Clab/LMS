@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { TiptapEditor } from "./TiptapEditor";
+import { upload } from "@vercel/blob/client";
 
 // Build image URL prefix from imageFolder
 function getImagePrefix(folder: string): string {
@@ -69,6 +70,32 @@ function stripDoublePrefix(html: string): string {
     /src=(["'])\/images\/projects\/[^/"']+\/\/images\/projects\/[^/"']+\/([^"']+)\1/gi,
     (_, quote, filename) => `src=${quote}${filename}${quote}`
   );
+}
+
+// ============ Shared Upload Helper ============
+// Uses direct-to-Vercel-Blob client upload on Vercel (bypasses 4.5MB serverless limit),
+// falls back to traditional FormData upload for local dev / non-Vercel environments.
+async function uploadFile(file: File, folder: string): Promise<string | null> {
+  // Try client-side direct upload via /api/upload (Vercel Blob — no 4.5MB limit)
+  try {
+    const { url } = await upload(file.name, file, {
+      access: "public",
+      handleUploadUrl: "/api/upload",
+      clientPayload: JSON.stringify({ folder }),
+    });
+    return url;
+  } catch {
+    // Fall through to local dev fallback
+  }
+
+  // Traditional FormData upload for local dev / non-Vercel environments
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("folder", folder);
+  const res = await fetch("/api/upload", { method: "POST", body: formData });
+  if (!res.ok) return null;
+  const data = await res.json();
+  return data.url ?? null;
 }
 
 // ============ Types ============
@@ -295,24 +322,11 @@ function PhotoUploader({
 
     setIsUploading(true);
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("folder", "about");
-
-      const response = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        if (result.url) {
-          onPhotoChange(result.url);
-        } else {
-          alert("上传失败：服务器未返回有效路径");
-        }
+      const url = await uploadFile(file, "about");
+      if (url) {
+        onPhotoChange(url);
       } else {
-        alert("上传失败: " + (await response.text()));
+        alert("上传失败：服务器未返回有效路径");
       }
     } catch (e) {
       console.error("Upload failed:", e);
@@ -405,21 +419,10 @@ function ImageUploader({
       setUploadProgress(`上传中... (${i + 1}/${files.length})`);
 
       try {
-        const formData = new FormData();
-        formData.append("file", file);
-        if (imageFolder) formData.append("folder", imageFolder);
-
-        const response = await fetch("/api/upload", {
-          method: "POST",
-          body: formData,
-        });
-
-        if (response.ok) {
-          const result = await response.json();
-          if (result.url) {
-            newImages.push(result.url);
-            if (!firstUploadedUrl) firstUploadedUrl = result.url;
-          }
+        const url = await uploadFile(file, imageFolder || "projects");
+        if (url) {
+          newImages.push(url);
+          if (!firstUploadedUrl) firstUploadedUrl = url;
         }
       } catch (e) {
         console.error("Upload failed:", e);
@@ -624,13 +627,9 @@ function CoverPicker({
     if (!file) return;
     setUploading(true);
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("folder", imageFolder || "projects");
-      const res = await fetch("/api/upload", { method: "POST", body: formData });
-      if (!res.ok) throw new Error("upload failed");
-      const data = await res.json();
-      if (data.url) onSetCover(data.url, "manual");
+      const url = await uploadFile(file, imageFolder || "projects");
+      if (url) onSetCover(url, "manual");
+      else onToast?.("封面图上传失败", "error");
     } catch {
       onToast?.("封面图上传失败", "error");
     } finally {
