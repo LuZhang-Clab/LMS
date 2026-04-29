@@ -1,11 +1,18 @@
 import { NextResponse } from "next/server";
 import { put } from "@vercel/blob";
 import path from "path";
+import fs from "fs";
 
 export const runtime = "nodejs";
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml"];
 const MAX_SIZE = 10 * 1024 * 1024; // 10MB
+const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads");
+
+// Ensure upload directory exists (local dev)
+if (!fs.existsSync(UPLOAD_DIR)) {
+  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+}
 
 export async function POST(request: Request) {
   try {
@@ -48,14 +55,31 @@ export async function POST(request: Request) {
       blobPath = `images/uploads/${filename}`;
     }
 
-    // Upload to Vercel Blob
-    const arrayBuffer = await (file as File).arrayBuffer();
-    const blob = await put(blobPath, arrayBuffer, {
-      access: "public",
-      contentType: (file as File).type,
-    });
+    let url: string;
 
-    return NextResponse.json({ url: blob.url });
+    // Extract arrayBuffer once, before branching
+    const arrayBuffer = await (file as File).arrayBuffer();
+
+    // Use Vercel Blob on Vercel, local file system for local dev
+    if (process.env.BLOB_READ_WRITE_TOKEN) {
+      const blob = await put(blobPath, arrayBuffer, {
+        access: "public",
+        contentType: (file as File).type,
+      });
+      url = blob.url;
+    } else {
+      // Local fallback: save to public/uploads
+      const subDir = blobPath.split("/").slice(0, -1).join("/");
+      const localDir = path.join(UPLOAD_DIR, subDir);
+      if (!fs.existsSync(localDir)) {
+        fs.mkdirSync(localDir, { recursive: true });
+      }
+      const localPath = path.join(UPLOAD_DIR, blobPath);
+      fs.writeFileSync(localPath, Buffer.from(arrayBuffer));
+      url = `/uploads/${blobPath}`;
+    }
+
+    return NextResponse.json({ url });
   } catch (error) {
     console.error("[POST /api/upload]", error);
     const message = error instanceof Error ? error.message : "Upload failed";

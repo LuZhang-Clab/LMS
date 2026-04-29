@@ -252,7 +252,7 @@ export async function DELETE(req: NextRequest) {
       if (fs.existsSync(projectDir)) {
         fs.rmSync(projectDir, { recursive: true, force: true });
       }
-      await prisma.project.delete({ where: { id } });
+      await prisma.project.deleteMany({ where: { id } });
       clearDataCache();
       return NextResponse.json({ success: true });
     case "work":
@@ -261,7 +261,7 @@ export async function DELETE(req: NextRequest) {
       if (fs.existsSync(workDir)) {
         fs.rmSync(workDir, { recursive: true, force: true });
       }
-      await prisma.workExperience.delete({ where: { id } });
+      await prisma.workExperience.deleteMany({ where: { id } });
       clearDataCache();
       return NextResponse.json({ success: true });
     default:
