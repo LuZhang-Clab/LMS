@@ -4,6 +4,40 @@ import data from "../../data.json";
 
 const prisma = new PrismaClient();
 
+// Convert ContentBlock[] to Tiptap-compatible HTML
+function contentBlocksToHtml(blocks: Array<{ type: string; text?: string; files?: string[]; url?: string }>): string {
+  if (!Array.isArray(blocks) || blocks.length === 0) return "";
+
+  return blocks
+    .map((block) => {
+      switch (block.type) {
+        case "heading":
+          return `<h2>${escapeHtml(block.text || "")}</h2>`;
+        case "text":
+          return `<p>${escapeHtml(block.text || "").replace(/\n/g, "<br>")}</p>`;
+        case "images":
+          if (Array.isArray(block.files) && block.files.length > 0) {
+            return block.files.map((f) => `<img src="${escapeHtml(f)}" alt="" />`).join("");
+          }
+          return "";
+        case "link":
+          return `<a href="${escapeHtml(block.url || "#")}">${escapeHtml(block.text || "")}</a>`;
+        default:
+          return "";
+      }
+    })
+    .join("");
+}
+
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 async function main() {
   // Site
   await prisma.site.upsert({
@@ -64,8 +98,8 @@ async function main() {
         titleZh: exp.title_zh,
         period: exp.period,
         detailFolder: exp.detailFolder || exp.id,
-        contentZh: JSON.stringify(exp.content_zh || []),
-        contentEn: JSON.stringify(exp.content_en || []),
+        contentZh: contentBlocksToHtml(exp.content_zh || []),
+        contentEn: contentBlocksToHtml(exp.content_en || []),
         sortOrder: data.workExperience.indexOf(exp),
       },
       create: {
@@ -74,8 +108,8 @@ async function main() {
         titleZh: exp.title_zh,
         period: exp.period,
         detailFolder: exp.detailFolder || exp.id,
-        contentZh: JSON.stringify(exp.content_zh || []),
-        contentEn: JSON.stringify(exp.content_en || []),
+        contentZh: contentBlocksToHtml(exp.content_zh || []),
+        contentEn: contentBlocksToHtml(exp.content_en || []),
         sortOrder: data.workExperience.indexOf(exp),
       },
     });
@@ -174,8 +208,8 @@ async function main() {
           cover,
           imageFolder,
           images: JSON.stringify([]),
-          contentZh: JSON.stringify(proj.content_zh || []),
-          contentEn: JSON.stringify(proj.content_en || []),
+          contentZh: contentBlocksToHtml(proj.content_zh || []),
+          contentEn: contentBlocksToHtml(proj.content_en || []),
           link: "",
           sortOrder: pi,
         },
@@ -187,8 +221,8 @@ async function main() {
           cover,
           imageFolder,
           images: JSON.stringify([]),
-          contentZh: JSON.stringify(proj.content_zh || []),
-          contentEn: JSON.stringify(proj.content_en || []),
+          contentZh: contentBlocksToHtml(proj.content_zh || []),
+          contentEn: contentBlocksToHtml(proj.content_en || []),
           link: "",
           sortOrder: pi,
         },
