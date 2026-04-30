@@ -18,7 +18,9 @@ CREATE TABLE "About" (
     "quote_zh" TEXT NOT NULL,
     "education_en" TEXT NOT NULL,
     "education_zh" TEXT NOT NULL,
-    "photo" TEXT NOT NULL DEFAULT '/images/about/0.jpg'
+    "photo" TEXT NOT NULL DEFAULT '/images/about/0.jpg',
+    "awards_en" TEXT NOT NULL DEFAULT '',
+    "awards_zh" TEXT NOT NULL DEFAULT ''
 );
 
 -- CreateTable
@@ -71,8 +73,8 @@ CREATE TABLE "Project" (
     "content_zh" TEXT NOT NULL,
     "content_en" TEXT NOT NULL,
     "sort_order" INTEGER NOT NULL DEFAULT 0,
-    "created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updated_at" DATETIME NOT NULL,
+    "created_at" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP NOT NULL,
     CONSTRAINT "Project_category_id_fkey" FOREIGN KEY ("category_id") REFERENCES "Category" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
