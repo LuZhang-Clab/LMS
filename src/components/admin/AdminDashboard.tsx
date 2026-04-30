@@ -655,25 +655,49 @@ function CoverPicker({
   })();
   const autoPreview = makeAbsolute(autoCover);
 
+  const effectivePreview = isAuto && autoPreview ? autoPreview : preview;
+  const hasCover = !!effectivePreview;
+
   return (
     <div style={{ marginBottom: "1.2rem" }}>
       <label style={styles.label}>封面图 · COVER</label>
 
       <div style={{ marginBottom: "0.5rem" }}>
-        <img
-          src={isAuto && autoPreview ? autoPreview : preview}
-          alt="封面预览"
-          style={{
-            width: "120px",
-            height: "80px",
-            objectFit: "cover",
-            borderRadius: "4px",
-            border: "1px solid #333",
-            background: "#111",
-            display: "block",
-          }}
-        />
-        {isAuto && (
+        {hasCover ? (
+          <img
+            src={effectivePreview}
+            alt="封面预览"
+            style={{
+              width: "120px",
+              height: "80px",
+              objectFit: "cover",
+              borderRadius: "4px",
+              border: "1px solid #333",
+              background: "#111",
+              display: "block",
+            }}
+          />
+        ) : (
+          <div
+            style={{
+              width: "120px",
+              height: "80px",
+              borderRadius: "4px",
+              border: "2px dashed #333",
+              background: "#111",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#444",
+              fontSize: "0.7rem",
+              textAlign: "center",
+              padding: "4px",
+            }}
+          >
+            暂无封面
+          </div>
+        )}
+        {isAuto && autoCover && (
           <span style={{ fontSize: "0.7rem", color: "#555", marginTop: "2px", display: "block" }}>
             自动提取（尚未手动设置）
           </span>

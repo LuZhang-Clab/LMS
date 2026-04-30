@@ -8,7 +8,7 @@ import Underline from "@tiptap/extension-underline";
 import TextAlign from "@tiptap/extension-text-align";
 import Placeholder from "@tiptap/extension-placeholder";
 import { useState, useCallback, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { upload } from "@vercel/blob/client";
 
 interface TiptapEditorProps {
   initialHtml: string;
@@ -65,17 +65,14 @@ export function TiptapEditor({ initialHtml, onChange, imageFolder }: TiptapEdito
       if (!file.type.startsWith("image/")) return;
       setUploadingCount((c) => c + 1);
       try {
-        const formData = new FormData();
-        formData.append("file", file);
-        if (imageFolder) formData.append("folder", imageFolder);
-
-        const res = await fetch("/api/upload", { method: "POST", body: formData });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.url) {
-            editor?.chain().focus().setImage({ src: data.url }).run();
-            editor?.chain().focus().setTextSelection(editor.state.selection.to + 1).run();
-          }
+        const { url } = await upload(file.name, file, {
+          access: "public",
+          handleUploadUrl: "/api/upload",
+          clientPayload: JSON.stringify({ folder: imageFolder || "projects" }),
+        });
+        if (url) {
+          editor?.chain().focus().setImage({ src: url }).run();
+          editor?.chain().focus().setTextSelection(editor.state.selection.to + 1).run();
         }
       } catch (e) {
         console.error("Image upload failed:", e);
@@ -205,20 +202,18 @@ export function TiptapEditor({ initialHtml, onChange, imageFolder }: TiptapEdito
       if (!file.type.startsWith("image/")) { e.target.value = ""; setPendingImagePos(null); return; }
       setUploadingCount((c) => c + 1);
       try {
-        const formData = new FormData();
-        formData.append("file", file);
-        if (imageFolder) formData.append("folder", imageFolder);
-        const res = await fetch("/api/upload", { method: "POST", body: formData });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.url) {
-            editor
-              .chain()
-              .focus()
-              .deleteRange({ from: pendingImagePos.from, to: pendingImagePos.to })
-              .setImage({ src: data.url })
-              .run();
-          }
+        const { url } = await upload(file.name, file, {
+          access: "public",
+          handleUploadUrl: "/api/upload",
+          clientPayload: JSON.stringify({ folder: imageFolder || "projects" }),
+        });
+        if (url) {
+          editor
+            .chain()
+            .focus()
+            .deleteRange({ from: pendingImagePos.from, to: pendingImagePos.to })
+            .setImage({ src: url })
+            .run();
         }
       } catch (err) {
         console.error("Replace image failed:", err);

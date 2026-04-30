@@ -132,7 +132,6 @@ export async function PUT(req: NextRequest) {
     }
 
     case "link": {
-      const id = validateString(data.id, 100);
       const platform = validateString(data.platform, 50);
       const url = validateUrl(data.url);
       const sortOrder = validateSortOrder(data.sortOrder ?? data.sort_order);
@@ -140,9 +139,9 @@ export async function PUT(req: NextRequest) {
         return NextResponse.json({ error: "Platform is required" }, { status: 400 });
       }
       const result = await prisma.link.upsert({
-        where: { id },
+        where: { platform },
         update: { platform, url, sortOrder },
-        create: { id, platform, url, sortOrder },
+        create: { platform, url, sortOrder },
       });
       return NextResponse.json(result);
     }

@@ -59,7 +59,7 @@ model Service {
 
 model Link {
   id          String @id @default(cuid())
-  platform    String // linkedin, github, replit, xiaohongshu, email
+  platform    String @unique // linkedin, github, replit, xiaohongshu, email
   url         String
   sortOrder   Int    @default(0) @map("sort_order")
 }
