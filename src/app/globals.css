@@ -1001,6 +1001,21 @@ body.admin-mode {
   line-height: 1.75;
 }
 
+.service-item .service-link {
+  display: inline-block;
+  margin-top: 0.4rem;
+  font-family: var(--font-noto-sans), "Noto Sans SC", sans-serif;
+  font-size: 0.75rem;
+  color: var(--accent);
+  text-decoration: none;
+  letter-spacing: 0.04em;
+  transition: opacity 0.2s;
+}
+
+.service-item .service-link:hover {
+  opacity: 0.75;
+}
+
 /* Contact Links - centered, icon only, bigger */
 .contact-links {
   display: flex;

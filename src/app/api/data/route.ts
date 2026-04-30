@@ -83,6 +83,7 @@ export async function GET(req: NextRequest) {
         title_zh: s.titleZh,
         desc_en: s.descEn,
         desc_zh: s.descZh,
+        link: s.link ?? "",
         sort_order: s.sortOrder,
       })),
       links: links.reduce((acc, l) => {
@@ -233,6 +234,7 @@ export async function POST(req: NextRequest) {
             titleZh: validateString(s.title_zh),
             descEn: validateString(s.desc_en, 2000),
             descZh: validateString(s.desc_zh, 2000),
+            link: validateUrl(s.link),
             sortOrder: i,
           },
         });

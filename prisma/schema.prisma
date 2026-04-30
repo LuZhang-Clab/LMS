@@ -49,12 +49,13 @@ model WorkExperience {
 }
 
 model Service {
-  id      String @id @default(cuid())
-  titleEn String @map("title_en")
-  titleZh String @map("title_zh")
-  descEn  String @map("desc_en")
-  descZh  String @map("desc_zh")
-  sortOrder Int  @default(0) @map("sort_order")
+  id        String  @id @default(cuid())
+  titleEn   String  @map("title_en")
+  titleZh   String  @map("title_zh")
+  descEn    String  @map("desc_en")
+  descZh    String  @map("desc_zh")
+  link      String  @default("")
+  sortOrder Int     @default(0) @map("sort_order")
 }
 
 model Link {

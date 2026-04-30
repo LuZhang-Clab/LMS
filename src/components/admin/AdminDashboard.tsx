@@ -8,16 +8,24 @@ import { upload } from "@vercel/blob/client";
 function getImagePrefix(folder: string): string {
   if (!folder) return "/images/projects/default";
   if (folder === "about") return "/images/about";
-  if (folder.startsWith("w-")) return `/images/work/${folder}`;
+  if (folder.startsWith("work/")) return `/images/${folder}`;
+  if (folder.startsWith("projects/")) return `/images/${folder}`;
   return `/images/projects/${folder}`;
 }
 
 // Strip absolute prefix from image src, returning the relative filename.
-// e.g. /images/projects/proj-123/photo.jpg → photo.jpg
+// e.g. /images/work/work/cuid/photo.jpg → photo.jpg
 function stripImagePrefix(src: string, folder: string): string {
   const prefix = getImagePrefix(folder);
   if (src.startsWith(prefix + "/")) {
     return src.slice(prefix.length + 1);
+  }
+  // Also handle legacy /images/work/{folder} pattern for work entries
+  if (folder.startsWith("work/")) {
+    const legacyPrefix = `/images/work/${folder}`;
+    if (src.startsWith(legacyPrefix + "/")) {
+      return src.slice(legacyPrefix.length + 1);
+    }
   }
   return src;
 }
@@ -163,6 +171,7 @@ interface SiteData {
     title_en: string;
     desc_zh: string;
     desc_en: string;
+    link: string;
     sort_order: number;
   }>;
 }
@@ -1723,14 +1732,14 @@ function WorkExpItem({
   const [localContentZh, setLocalContentZh] = useState(exp.content_zh || "");
   const [localContentEn, setLocalContentEn] = useState(exp.content_en || "");
 
+  const imageFolder = `work/${exp.id}`;
+
   const extractFirstImage = (html: string): string => {
-    // Support URLs with query strings (?token=abc&ver=1)
     const match = html.match(/src\s*=\s*(["'])([^"']+)\1/i);
     return match ? match[2] : "";
   };
 
   const extractAllImages = (html: string): string[] => {
-    // Support URLs with query strings (?token=abc&ver=1) by matching src value across the entire attribute
     const matches = html.matchAll(/src\s*=\s*(["'])([^"']+)\1/gi);
     const imgs: string[] = [];
     for (const m of matches) {
@@ -1740,28 +1749,22 @@ function WorkExpItem({
     return imgs;
   };
 
-  const denormalizeContentUrls = (html: string): string => {
-    if (!html) return html;
-    // Preserve blob URLs (https:// with query strings) as-is
-    // Strip our known /images/projects/xxx/ prefix if present
-    return html.replace(
-      /<img([^>]+)src=(["'])(https?:\/\/[^"']+)\2/gi,
-      (_, attrs, quote, src) => {
-        // Already absolute — preserve blob/CDN/external URLs unchanged
-        return `<img${attrs}src=${quote}${src}${quote}`;
-      }
-    );
+  const getDefaultCover = (): string => {
+    const zh = extractFirstImage(localContentZh);
+    const en = extractFirstImage(localContentEn);
+    return zh || en || "";
   };
 
+  const [coverImage, setCoverImage] = useState(exp.cover || "");
+  const [coverSource, setCoverSource] = useState<"manual" | "auto">(
+    exp.cover ? "manual" : "auto"
+  );
+
   const handleContentChange = (field: "content_zh" | "content_en", html: string) => {
-    const normalized = denormalizeContentUrls(html);
+    const normalized = denormalizeContentUrls(html, imageFolder);
     if (field === "content_zh") setLocalContentZh(normalized);
     else setLocalContentEn(normalized);
     onUpdate(field, normalized);
-    if (!exp.cover) {
-      const firstImg = extractFirstImage(normalized);
-      if (firstImg) onUpdate("cover", firstImg);
-    }
   };
 
   const handleSave = async () => {
@@ -1770,10 +1773,10 @@ function WorkExpItem({
       const zhImg = extractAllImages(localContentZh);
       const enImg = extractAllImages(localContentEn);
       const allImages = [...new Set([...zhImg, ...enImg])];
-      const resolvedCover =
-        exp.cover ||
-        extractFirstImage(localContentZh) ||
-        extractFirstImage(localContentEn);
+      const finalCover =
+        coverSource === "manual" && coverImage
+          ? coverImage
+          : getDefaultCover();
 
       const res = await fetch("/api/admin/update", {
         method: "PUT",
@@ -1784,16 +1787,20 @@ function WorkExpItem({
           title_zh: exp.title_zh,
           title_en: exp.title_en,
           period: exp.period,
-          content_zh: denormalizeContentUrls(localContentZh),
-          content_en: denormalizeContentUrls(localContentEn),
-          cover: resolvedCover,
+          content_zh: denormalizeContentUrls(localContentZh, imageFolder),
+          content_en: denormalizeContentUrls(localContentEn, imageFolder),
+          cover: finalCover,
           images: allImages,
           sort_order: index,
+          detailFolder: imageFolder,
         }),
       });
       if (res.ok) {
         onUpdate("images", allImages);
-        onUpdate("cover", resolvedCover);
+        onUpdate("cover", finalCover);
+        if (coverSource === "manual") {
+          setCoverImage(finalCover);
+        }
         setSaveStatus("saved");
         setTimeout(() => setSaveStatus("idle"), 2000);
         showToast("保存成功", "success");
@@ -1888,6 +1895,19 @@ function WorkExpItem({
         </div>
       </div>
 
+      <CoverPicker
+        coverImage={coverImage}
+        coverSource={coverSource}
+        localContentZh={localContentZh}
+        localContentEn={localContentEn}
+        imageFolder={imageFolder}
+        onSetCover={(src, source) => {
+          setCoverImage(src);
+          setCoverSource(source);
+        }}
+        onToast={showToast}
+      />
+
       <SectionHeader label="详情内容 · DETAILS" />
       <div style={styles.formGroup}>
         <label style={{ ...styles.label, color: "#777" }}>
@@ -1896,7 +1916,7 @@ function WorkExpItem({
         <TiptapEditor
           initialHtml={localContentZh}
           onChange={(html) => handleContentChange("content_zh", html)}
-          imageFolder={`work/${exp.id}`}
+          imageFolder={imageFolder}
         />
       </div>
 
@@ -1907,7 +1927,7 @@ function WorkExpItem({
         <TiptapEditor
           initialHtml={localContentEn}
           onChange={(html) => handleContentChange("content_en", html)}
-          imageFolder={`work/${exp.id}`}
+          imageFolder={imageFolder}
         />
       </div>
 
@@ -1942,9 +1962,9 @@ function ServicesTab({ data, updateData, showToast }: { data: SiteData; updateDa
       await fetch("/api/admin/update", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: "service", id, title_zh: "", title_en: "", desc_zh: "", desc_en: "", sort_order: data.services.length }),
+        body: JSON.stringify({ type: "service", id, title_zh: "", title_en: "", desc_zh: "", desc_en: "", link: "", sort_order: data.services.length }),
       });
-      updateData("services", [...data.services, { id, title_zh: "", title_en: "", desc_zh: "", desc_en: "", sort_order: data.services.length }]);
+      updateData("services", [...data.services, { id, title_zh: "", title_en: "", desc_zh: "", desc_en: "", link: "", sort_order: data.services.length }]);
     } catch (e) {
       console.error("Failed to add service:", e);
     }
@@ -2038,6 +2058,17 @@ function ServicesTab({ data, updateData, showToast }: { data: SiteData; updateDa
               />
             </div>
           </div>
+
+          <div style={styles.formGroup}>
+            <label style={styles.label}>服务链接 (可选)</label>
+            <input
+              type="text"
+              value={svc.link || ""}
+              onChange={(e) => updateService(i, "link", e.target.value)}
+              style={styles.input}
+              placeholder="https://..."
+            />
+          </div>
         </div>
       ))}
       {/* Save all services */}
@@ -2048,7 +2079,7 @@ function ServicesTab({ data, updateData, showToast }: { data: SiteData; updateDa
               await fetch("/api/admin/update", {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ type: "service", id: s.id, title_zh: s.title_zh, title_en: s.title_en, desc_zh: s.desc_zh, desc_en: s.desc_en, sort_order: s.sort_order }),
+                body: JSON.stringify({ type: "service", id: s.id, title_zh: s.title_zh, title_en: s.title_en, desc_zh: s.desc_zh, desc_en: s.desc_en, link: s.link || "", sort_order: s.sort_order }),
               });
             }
             showToast("保存成功", "success");

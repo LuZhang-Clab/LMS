@@ -41,25 +41,29 @@ function ContactIcon({ platform }: { platform: string }) {
 
 function resolveHtmlImages(html: string, folder: string): string {
   if (!html || !folder) return html;
+  // Work entries use /uploads/images/work/{id}/, about uses /uploads/images/about/{folder}/
+  const prefix = folder.startsWith("work/")
+    ? `/uploads/images/${folder}`
+    : `/uploads/images/about/${folder}`;
   return html.replace(
     /<img([^>]+)src=(["'])(?!(?:https?:\/\/|data:))([^"']+)\2/gi,
     (_, attrs, quote, src) => {
       const trimmed = src.trim();
       if (!trimmed || trimmed.startsWith("/")) return `<img${attrs}src=${quote}${trimmed}${quote}`;
       if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return `<img${attrs}src=${quote}${trimmed}${quote}`;
-      return `<img${attrs}src=${quote}/images/about/${folder}/${trimmed}${quote}`;
+      return `<img${attrs}src=${quote}${prefix}/${trimmed}${quote}`;
     }
   );
 }
 
 function WorkExpModal({
   exp,
-  imageFolder,
+  detailFolder,
   onClose,
   onImageClick,
 }: {
   exp: WorkExperience | null;
-  imageFolder: string;
+  detailFolder: string;
   onClose: () => void;
   onImageClick: (src: string) => void;
 }) {
@@ -71,7 +75,7 @@ function WorkExpModal({
 
   let contentHtml: React.ReactNode = null;
   if (typeof rawContent === "string" && rawContent.trim()) {
-    const resolved = resolveHtmlImages(rawContent, imageFolder || exp.detailFolder || "");
+    const resolved = resolveHtmlImages(rawContent, detailFolder || exp.detailFolder || "");
     contentHtml = (
       <div
         className="modal-html-content"
@@ -274,6 +278,17 @@ export default function AboutClient({
                   <div className="service-desc">
                     {isEn ? svc.descEn : svc.descZh}
                   </div>
+                  {svc.link && (
+                    <a
+                      href={svc.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="service-link"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {isEn ? "View" : "查看"}
+                    </a>
+                  )}
                 </div>
               ))}
               {services.length === 0 && (
@@ -312,7 +327,7 @@ export default function AboutClient({
       {/* Work Exp Modal */}
       <WorkExpModal
         exp={activeExp}
-        imageFolder={activeExp?.detailFolder || ""}
+        detailFolder={activeExp?.detailFolder || ""}
         onClose={() => setActiveExp(null)}
         onImageClick={(src) => setLightboxSrc(src)}
       />

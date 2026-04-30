@@ -121,11 +121,12 @@ export async function PUT(req: NextRequest) {
       const titleZh = validateString(data.titleZh ?? data.title_zh);
       const descEn = validateString(data.descEn ?? data.desc_en, 2000);
       const descZh = validateString(data.descZh ?? data.desc_zh, 2000);
+      const link = validateUrl(data.link);
       const sortOrder = validateSortOrder(data.sortOrder ?? data.sort_order);
       const result = await prisma.service.upsert({
         where: { id },
-        update: { titleEn, titleZh, descEn, descZh, sortOrder },
-        create: { id, titleEn, titleZh, descEn, descZh, sortOrder },
+        update: { titleEn, titleZh, descEn, descZh, link, sortOrder },
+        create: { id, titleEn, titleZh, descEn, descZh, link, sortOrder },
       });
       clearDataCache();
       return NextResponse.json(result);
@@ -273,8 +274,8 @@ export async function DELETE(req: NextRequest) {
       clearDataCache();
       return NextResponse.json({ success: true });
     case "work":
-      // Delete associated image folder (now under images/about/{id})
-      const workDir = path.join(process.cwd(), "public", "images", "about", id);
+      // Delete associated image folder under public/uploads/images/work/{id}
+      const workDir = path.join(process.cwd(), "public", "uploads", "images", "work", id);
       if (fs.existsSync(workDir)) {
         fs.rmSync(workDir, { recursive: true, force: true });
       }

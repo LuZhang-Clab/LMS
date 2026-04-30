@@ -9,6 +9,7 @@ export interface AdminService {
   title_zh: string;
   desc_en: string;
   desc_zh: string;
+  link?: string;
   sort_order?: number;
 }
 
@@ -112,6 +113,7 @@ export interface Service {
   titleZh: string;
   descEn: string;
   descZh: string;
+  link?: string;
   sortOrder: number;
 }
 
