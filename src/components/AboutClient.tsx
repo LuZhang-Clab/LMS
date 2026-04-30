@@ -46,11 +46,14 @@ function resolveHtmlImages(html: string, folder: string): string {
     ? `/uploads/images/${folder}`
     : `/uploads/images/about/${folder}`;
   return html.replace(
-    /<img([^>]+)src=(["'])(?!(?:https?:\/\/|data:))([^"']+)\2/gi,
+    /<img([^>]+)src=(["'])([^"']+)\2/gi,
     (_, attrs, quote, src) => {
       const trimmed = src.trim();
-      if (!trimmed || trimmed.startsWith("/")) return `<img${attrs}src=${quote}${trimmed}${quote}`;
-      if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return `<img${attrs}src=${quote}${trimmed}${quote}`;
+      // Already absolute (blob, CDN, external) or relative path starting with / — pass through
+      if (trimmed.startsWith("http://") || trimmed.startsWith("https://") || trimmed.startsWith("data:") || trimmed.startsWith("/")) {
+        return `<img${attrs}src=${quote}${trimmed}${quote}`;
+      }
+      // Relative filename → prepend prefix
       return `<img${attrs}src=${quote}${prefix}/${trimmed}${quote}`;
     }
   );

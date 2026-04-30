@@ -31,15 +31,19 @@ function stripImagePrefix(src: string, folder: string): string {
 }
 
 // Convert relative image src in HTML to absolute URLs for Tiptap display.
-// Also handles already-absolute URLs and data URIs unchanged.
+// Handles already-absolute URLs (blob, CDN, external) and data URIs unchanged.
 function normalizeContentUrls(html: string, folder: string): string {
   if (!html || !folder) return html;
   const prefix = getImagePrefix(folder);
   return html.replace(
-    /<img([^>]+)src=(["'])(?!(?:https?:\/\/|data:))([^"']+)\2/gi,
+    /<img([^>]+)src=(["'])([^"']+)\2/gi,
     (_, attrs, quote, src) => {
       const trimmed = src.trim();
-      if (!trimmed || trimmed.startsWith("/")) return `<img${attrs}src=${quote}${trimmed}${quote}`;
+      // Already absolute (blob, CDN, external) or relative path starting with / — pass through
+      if (trimmed.startsWith("http://") || trimmed.startsWith("https://") || trimmed.startsWith("data:") || trimmed.startsWith("/")) {
+        return `<img${attrs}src=${quote}${trimmed}${quote}`;
+      }
+      // Relative filename → prepend prefix
       return `<img${attrs}src=${quote}${prefix}/${trimmed}${quote}`;
     }
   );
@@ -52,30 +56,32 @@ function denormalizeContentUrls(html: string, folder: string): string {
   if (!html || !folder) return html;
   const prefix = getImagePrefix(folder);
   return html.replace(
-    /<img([^>]+)src=(["'])(https?:\/\/[^"']+)\2/gi,
+    /<img([^>]+)src=(["'])([^"']+)\2/gi,
     (_, attrs, quote, src) => {
-      // Preserve any URL that already has a scheme (https:// or http://)
-      // — blob URLs, CDN URLs, external images stay as-is
-      if (src.startsWith("http://") || src.startsWith("https://")) {
-        return `<img${attrs}src=${quote}${src}${quote}`;
+      const trimmed = src.trim();
+      // Preserve absolute URLs (blob, CDN, external) unchanged
+      if (trimmed.startsWith("http://") || trimmed.startsWith("https://") || trimmed.startsWith("data:")) {
+        return `<img${attrs}src=${quote}${trimmed}${quote}`;
       }
-      // Strip our known absolute prefix if present
-      if (src.startsWith(prefix + "/")) {
-        const rel = src.slice(prefix.length + 1);
+      // Strip our known absolute prefix if present, otherwise keep as-is
+      if (trimmed.startsWith(prefix + "/")) {
+        const rel = trimmed.slice(prefix.length + 1);
         return `<img${attrs}src=${quote}${rel}${quote}`;
       }
-      return `<img${attrs}src=${quote}${src}${quote}`;
+      return `<img${attrs}src=${quote}${trimmed}${quote}`;
     }
   );
 }
 
-// Strip any double-prefixed paths from existing DB content:
+// Strip any double-prefixed paths from existing DB content.
 // e.g. /images/projects/xxx//images/projects/xxx/photo.jpg → photo.jpg
+// Also handles: /images/work/xxx//images/work/xxx/photo.jpg
+//              /images/about/xxx//images/about/xxx/photo.jpg
 // Used only when loading data from DB to fix legacy corrupted paths.
 function stripDoublePrefix(html: string): string {
   if (!html) return html;
   return html.replace(
-    /src=(["'])\/images\/projects\/[^/"']+\/\/images\/projects\/[^/"']+\/([^"']+)\1/gi,
+    /src=(["'])\/images\/(?:projects|about|work)\/[^/"]+\/\/images\/(?:projects|about|work)\/[^/"]+\/([^"']+)\1/gi,
     (_, quote, filename) => `src=${quote}${filename}${quote}`
   );
 }
