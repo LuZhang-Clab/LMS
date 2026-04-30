@@ -194,6 +194,24 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json(result);
     }
 
+    case "project-order": {
+      // Lightweight update: only touch categoryId and sortOrder — preserves all other fields (cover, images, content, etc.)
+      const id = validateString(data.id, 100);
+      const categoryId = validateString(data.categoryId, 100);
+      const sortOrder = validateSortOrder(data.sortOrder ?? data.sort_order);
+
+      if (!id) {
+        return NextResponse.json({ error: "id is required" }, { status: 400 });
+      }
+
+      const result = await prisma.project.update({
+        where: { id },
+        data: { categoryId: categoryId || undefined, sortOrder },
+      });
+      clearDataCache();
+      return NextResponse.json(result);
+    }
+
     case "work": {
       const id = validateString(data.id, 100);
       const titleEn = validateString(data.titleEn ?? data.title_en);

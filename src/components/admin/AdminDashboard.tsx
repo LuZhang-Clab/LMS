@@ -1283,7 +1283,7 @@ function ProjectsTab({ data, updateData, showToast }: { data: SiteData; updateDa
       await fetch("/api/admin/update", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: "project", id: projId, categoryId, sort_order: sortOrder }),
+        body: JSON.stringify({ type: "project-order", id: projId, categoryId, sort_order: sortOrder }),
       });
     } catch (e) {
       console.error("Failed to save project order:", e);
