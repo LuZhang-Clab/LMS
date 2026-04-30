@@ -170,22 +170,6 @@ export async function PUT(req: NextRequest) {
       const contentZh = validateHtmlContent(data.contentZh ?? data.content_zh);
       const contentEn = validateHtmlContent(data.contentEn ?? data.content_en);
 
-      // Debug: log received content
-      console.log("[PUT /api/admin/update] project:", {
-        id,
-        titleZh,
-        titleEn,
-        cover,
-        imageFolder,
-        images,
-        contentZh: contentZh ? `${contentZh.slice(0, 200)}... (len=${contentZh.length})` : "(empty)",
-        contentEn: contentEn ? `${contentEn.slice(0, 200)}... (len=${contentEn.length})` : "(empty)",
-      });
-
-      if (!contentZh && !contentEn) {
-        console.warn("[PUT /api/admin/update] WARNING: both content fields are empty! proj.id =", id);
-      }
-
       const result = await prisma.project.upsert({
         where: { id },
         update: { categoryId, titleEn, titleZh, cover, imageFolder, link, sortOrder, images, contentZh, contentEn },

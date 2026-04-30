@@ -5,14 +5,6 @@ import Nav from "@/components/Nav";
 import type { WorkExperience, Service, ContentBlock } from "@/types";
 import type { SiteLink } from "@/types";
 import { useLocale } from "@/context/LocaleProvider";
-// CursorProvider handles init at layout level
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function t(obj: Record<string, unknown> | null | undefined, field: string, lang: string): string {
-  if (!obj) return "";
-  return ((obj[`${field}_${lang}`] as string) || (obj[`${field}_en`] as string) || "") as string;
-}
 
 // ─── Contact Icons ────────────────────────────────────────────────────────────
 
@@ -181,11 +173,8 @@ export default function AboutClient({
       ? about.photo
       : about.photo.startsWith("/")
       ? about.photo
-      : `/images/about/0.jpg`
+      : `/uploads/images/about/${about.photo}`
     : `/images/about/0.jpg`;
-
-  // Work experience images: 1.jpg-4.jpg for 4 work entries
-  const getWorkExpPhoto = (index: number) => `/images/about/${index + 1}.jpg`;
 
   return (
     <>
@@ -233,7 +222,7 @@ export default function AboutClient({
                 const cover = exp.cover
                   ? exp.cover.startsWith("http") || exp.cover.startsWith("/")
                     ? exp.cover
-                    : `/images/about/${exp.id}/${exp.cover}`
+                    : `/uploads/images/work/${exp.id}/${exp.cover}`
                   : `/images/about/${idx + 1}.jpg`;
                 return (
                   <div

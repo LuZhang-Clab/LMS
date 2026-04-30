@@ -5,23 +5,22 @@ import Link from "next/link";
 import Nav from "@/components/Nav";
 import { useLocale } from "@/context/LocaleProvider";
 
-function resolveImage(src: string, folder: string): string {
-  if (!src) return "";
-  if (src.startsWith("http://") || src.startsWith("https://")) return src;
-  if (src.startsWith("/")) return src;
-  return `/images/projects/${folder || "default"}/${src}`;
-}
-
 // Replace relative image src in HTML with absolute URLs before rendering,
-// so the browser fetches correct paths immediately (avoids DOM timing issues).
 function resolveHtmlImages(html: string, folder: string): string {
   if (!html || !folder) return html;
   return html.replace(
     /<img([^>]+)src=(["'])(?!(?:https?:\/\/|data:))([^"']+)\2/gi,
     (_, attrs, quote, src) => {
       const trimmed = src.trim();
-      if (!trimmed || trimmed.startsWith("/")) return `<img${attrs}src=${quote}${trimmed}${quote}`;
-      return `<img${attrs}src=${quote}${resolveImage(trimmed, folder)}${quote}`;
+      if (
+        trimmed.startsWith("http://") ||
+        trimmed.startsWith("https://") ||
+        trimmed.startsWith("data:") ||
+        trimmed.startsWith("/")
+      ) {
+        return `<img${attrs}src=${quote}${trimmed}${quote}`;
+      }
+      return `<img${attrs}src=${quote}/uploads/images/projects/${folder}/${trimmed}${quote}`;
     }
   );
 }

@@ -5,21 +5,14 @@ import Nav from "@/components/Nav";
 import type { Category, ContentBlock } from "@/types";
 import { useLocale } from "@/context/LocaleProvider";
 
-// ─── Language & helpers ──────────────────────────────────────────────────────
-
-function t(obj: Record<string, unknown> | null | undefined, field: string): string {
-  if (!obj) return "";
-  return ((obj[`${field}_en`] as string) || (obj[`${field}_zh`] as string) || "") as string;
-}
-
 function resolveCover(cover: string | null, imageFolder: string | null): string {
   if (cover) {
     if (cover.startsWith("http")) return cover;
     if (cover.startsWith("/")) return cover;
-    return `/images/projects/${imageFolder || "default"}/${cover}`;
+    return `/uploads/images/projects/${imageFolder || "default"}/${cover}`;
   }
   if (imageFolder) {
-    return `/images/projects/${imageFolder}/cover.jpg`;
+    return `/uploads/images/projects/${imageFolder}/cover.jpg`;
   }
   return "";
 }
@@ -27,7 +20,7 @@ function resolveCover(cover: string | null, imageFolder: string | null): string 
 function resolveImage(src: string, folder: string): string {
   if (src.startsWith("http")) return src;
   if (src.startsWith("/")) return src;
-  return `/images/projects/${folder || "default"}/${src}`;
+  return `/uploads/images/projects/${folder || "default"}/${src}`;
 }
 
 // ─── Content Block Renderer ───────────────────────────────────────────────────
@@ -38,9 +31,15 @@ function resolveHtmlImages(html: string, folder: string): string {
     /<img([^>]+)src=(["'])(?!(?:https?:\/\/|data:))([^"']+)\2/gi,
     (_, attrs, quote, src) => {
       const trimmed = src.trim();
-      if (!trimmed || trimmed.startsWith("/")) return `<img${attrs}src=${quote}${trimmed}${quote}`;
-      if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return `<img${attrs}src=${quote}${trimmed}${quote}`;
-      return `<img${attrs}src=${quote}/images/projects/${folder}/${trimmed}${quote}`;
+      if (
+        trimmed.startsWith("http://") ||
+        trimmed.startsWith("https://") ||
+        trimmed.startsWith("data:") ||
+        trimmed.startsWith("/")
+      ) {
+        return `<img${attrs}src=${quote}${trimmed}${quote}`;
+      }
+      return `<img${attrs}src=${quote}/uploads/images/projects/${folder}/${trimmed}${quote}`;
     }
   );
 }
@@ -229,22 +228,12 @@ export default function HomeClient({ categories, about }: HomeClientProps) {
 
   const openProjectModal = useCallback(
     (proj: Category["projects"][0]) => {
-      const rawContent = isEn ? proj.contentEn : proj.contentZh;
-
-      // DEBUG: log content status
-      console.log("[openProjectModal]", {
-        id: proj.id,
-        locale: locale,
-        rawContentType: typeof rawContent,
-        rawContentLength: typeof rawContent === "string" ? rawContent.length : "N/A",
-        rawContentPreview: typeof rawContent === "string" ? rawContent.slice(0, 100) : rawContent,
-        imageFolder: proj.imageFolder,
-      });
+      const isEnLocale = locale === "en";
+      const rawContent = isEnLocale ? proj.contentEn : proj.contentZh;
 
       let content: React.ReactNode;
 
       if (typeof rawContent === "string" && rawContent.trim()) {
-        // HTML string (new Tiptap format) — resolve image paths before rendering
         const resolved = resolveHtmlImages(rawContent, proj.imageFolder);
         content = (
           <div
@@ -260,7 +249,6 @@ export default function HomeClient({ categories, about }: HomeClientProps) {
           />
         );
       } else if (Array.isArray(rawContent)) {
-        // Legacy ContentBlock[] format
         content = renderContentBlocks(
           rawContent as ContentBlock[],
           proj.imageFolder,
@@ -273,7 +261,7 @@ export default function HomeClient({ categories, about }: HomeClientProps) {
       setModal({
         visible: true,
         active: false,
-        title: isEn ? proj.titleEn : proj.titleZh,
+        title: isEnLocale ? proj.titleEn : proj.titleZh,
         content,
         link: proj.link || undefined,
       });
@@ -285,7 +273,7 @@ export default function HomeClient({ categories, about }: HomeClientProps) {
         });
       });
     },
-    [isEn]
+    [locale]
   );
 
   const closeModal = useCallback(() => {
